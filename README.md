@@ -106,6 +106,7 @@ wc-player-profiles/
 ├── 02_Metric Creation.R          # Event aggregation: 6 per-90 indicators, z-scoring
 ├── 03_lpa_model_selection.R      # 1–6 profile enumeration, 3 specifications, fit indices
 ├── 04_lpa_final_model.R          # Final 5-profile model, labeling, visualization
+├── 05_team_composition.R         # Shows profile distribution on teams
 ├── data/                         # raw (StatsBomb) and processed (analysis-ready)
 ├── outputs/                      # figures, tables, saved model objects
 └── codebook.md                   # variable definitions
