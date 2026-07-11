@@ -31,8 +31,8 @@ A World Cup is an unusually clean opportunity to deploy the method because it ha
  
 Six per-90 indicators spanning attack, creation, progression, defense, and technical reliability, each z-scored on the sample:
  
-| Indicator | Definition | IO parallel |
-|---|---|---|
+| Indicator | Definition |
+|---|---|
 | npxG/90 | Non-penalty expected goals |
 | xAG/90 | Expected goals assisted |
 | Progressive carries/90 | Carries advancing ≥~9 yards toward goal |
