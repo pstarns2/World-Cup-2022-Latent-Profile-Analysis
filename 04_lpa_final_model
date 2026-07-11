@@ -1,0 +1,268 @@
+# =============================================================================
+# 04_lpa_final_model.R
+# World Cup LPA Project — Final Model Interpretation & Visualization
+#
+# Purpose: Extract the chosen profile solution, assign profile labels,
+#          produce the main visualization, and validate
+#          profile assignments.
+#
+# =============================================================================
+
+library(tidyverse)
+library(tidyLPA)
+library(gt)          # publication tables
+library(here)
+
+set.seed(42)
+
+# -----------------------------------------------------------------------------
+# Chosen solution (from 03_lpa_model_selection.R):
+#   Model 1 (equal variances, zero covariances), 5 profiles
+#   Entropy = .81, BLRT p < .01; smallest profile 3.1% (documented deviation
+#   from the 5% guideline — retained for substantive interpretability)
+# -----------------------------------------------------------------------------
+CHOSEN_MODEL    <- 1
+CHOSEN_PROFILES <- 5
+
+# Load data and saved model objects
+lpa_data_scaled <- readRDS(here("data", "processed", "lpa_data_scaled.rds"))
+lpa_data        <- readRDS(here("data", "processed", "lpa_data.rds"))
+
+z_indicators   <- c("z_npxG_per90", "z_xAG_per90", "z_prog_carries_per90",
+                    "z_pressures_per90", "z_pass_completion_pct",
+                    "z_aerials_contested_per90")
+raw_indicators <- c("npxG_per90", "xAG_per90", "prog_carries_per90",
+                    "pressures_per90", "pass_completion_pct",
+                    "aerials_contested_per90")
+
+# -----------------------------------------------------------------------------
+# 1. Extract chosen solution from the saved enumeration (no refitting)
+# -----------------------------------------------------------------------------
+all_models  <- readRDS(here("outputs", "models",
+                            paste0("lpa_models_m", CHOSEN_MODEL, ".rds")))
+final_model <- all_models[[paste0("model_", CHOSEN_MODEL,
+                                  "_class_", CHOSEN_PROFILES)]]
+
+# Fallback: refit directly if the saved object structure differs by version
+if (is.null(final_model)) {
+  message("Saved solution not found by key — refitting (seeded, deterministic).")
+  final_model <- lpa_data_scaled %>%
+    select(all_of(z_indicators)) %>%
+    estimate_profiles(n_profiles = CHOSEN_PROFILES, models = CHOSEN_MODEL)
+  final_model <- final_model[[1]]
+}
+
+# Assignments + posteriors + model input (z) columns, joined to raw data
+profile_assignments <- get_data(final_model) %>%
+  select(Class, starts_with("CPROB"), all_of(z_indicators)) %>%
+  bind_cols(lpa_data %>% select(-any_of(z_indicators))) %>%
+  mutate(Certainty = do.call(pmax, pick(starts_with("CPROB"))))
+
+message("Profile distribution:")
+print(table(profile_assignments$Class))
+message("Smallest profile: ",
+        min(table(profile_assignments$Class)), " players (",
+        round(min(prop.table(table(profile_assignments$Class))) * 100, 1), "%)")
+
+# -----------------------------------------------------------------------------
+# 2. Data-driven profile labeling
+#    Each label is claimed by the class whose MEANS earn it, in this order:
+#      Clinical Finishers     = highest z_npxG
+#      Ball-Playing Defenders = highest z_prog_carries (among unclaimed)
+#      Pressing Engines       = highest z_pressures (among unclaimed)
+#      Limited Role Players   = lowest z_pass_completion (among unclaimed)
+#      Balanced Contributors  = the remaining class
+# -----------------------------------------------------------------------------
+class_z_means <- profile_assignments %>%
+  group_by(Class) %>%
+  summarise(across(all_of(z_indicators), mean), .groups = "drop")
+
+claim <- function(df, claimed, var, direction = c("max", "min")) {
+  direction <- match.arg(direction)
+  pool <- df %>% filter(!Class %in% claimed)
+  if (direction == "max") pool$Class[which.max(pool[[var]])]
+  else                    pool$Class[which.min(pool[[var]])]
+}
+
+claimed <- integer(0)
+lab_finisher <- claim(class_z_means, claimed, "z_npxG_per90", "max");            claimed <- c(claimed, lab_finisher)
+lab_bpd      <- claim(class_z_means, claimed, "z_prog_carries_per90", "max");    claimed <- c(claimed, lab_bpd)
+lab_press    <- claim(class_z_means, claimed, "z_pressures_per90", "max");       claimed <- c(claimed, lab_press)
+lab_limited  <- claim(class_z_means, claimed, "z_pass_completion_pct", "min");   claimed <- c(claimed, lab_limited)
+lab_balanced <- setdiff(class_z_means$Class, claimed)
+
+profile_labels <- c("Clinical Finishers", "Ball-Playing Defenders",
+                    "Pressing Engines", "Limited Role Players",
+                    "Balanced Contributors")
+names(profile_labels) <- as.character(
+  c(lab_finisher, lab_bpd, lab_press, lab_limited, lab_balanced))
+
+stopifnot(length(unique(names(profile_labels))) == CHOSEN_PROFILES)
+
+message("\nLabel assignment (verify against class means below):")
+print(profile_labels)
+print(class_z_means %>% mutate(across(where(is.numeric), ~round(.x, 2))))
+
+label_levels <- c("Clinical Finishers", "Pressing Engines",
+                  "Ball-Playing Defenders", "Limited Role Players",
+                  "Balanced Contributors")
+
+profile_assignments <- profile_assignments %>%
+  mutate(
+    Profile_Label = recode(as.character(Class), !!!profile_labels),
+    Profile_Label = factor(Profile_Label, levels = label_levels)
+  )
+
+saveRDS(profile_assignments, here("data", "processed", "profile_assignments.rds"))
+
+# -----------------------------------------------------------------------------
+# 3. Profile means on ORIGINAL (unstandardized) indicators
+# -----------------------------------------------------------------------------
+profile_means <- profile_assignments %>%
+  group_by(Profile_Label) %>%
+  summarise(
+    n   = n(),
+    pct = round(n() / nrow(profile_assignments) * 100, 1),
+    across(all_of(raw_indicators), ~mean(.x, na.rm = TRUE),
+           .names = "mean_{.col}"),
+    .groups = "drop"
+  )
+
+print(profile_means)
+
+# -----------------------------------------------------------------------------
+# 4. Main profile plot (z-score means by profile)
+# -----------------------------------------------------------------------------
+profile_colors <- c(
+  "Clinical Finishers"     = "#E63946",
+  "Pressing Engines"       = "#FF9800",
+  "Ball-Playing Defenders" = "#2196F3",
+  "Limited Role Players"   = "#4CAF50",
+  "Balanced Contributors"  = "#9C27B0"
+)
+
+z_profile_means <- profile_assignments %>%
+  group_by(Profile_Label) %>%
+  summarise(across(all_of(z_indicators), mean), .groups = "drop") %>%
+  pivot_longer(all_of(z_indicators), names_to = "Indicator", values_to = "z_mean") %>%
+  mutate(
+    Indicator = recode(Indicator,
+      "z_npxG_per90"              = "npxG\n(Finishing)",
+      "z_xAG_per90"               = "xAG\n(Chance Creation)",
+      "z_prog_carries_per90"      = "Progressive\nCarries",
+      "z_pressures_per90"         = "Pressures\n(Work Rate)",
+      "z_pass_completion_pct"     = "Pass\nCompletion %",
+      "z_aerials_contested_per90" = "Aerial Duels\n(Physical)"
+    )
+  )
+
+p_profiles <- z_profile_means %>%
+  ggplot(aes(x = Indicator, y = z_mean,
+             color = Profile_Label, group = Profile_Label)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray70", linewidth = 0.7) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 4) +
+  scale_color_manual(values = profile_colors) +
+  scale_y_continuous(breaks = seq(-2, 3, 0.5)) +
+  labs(
+    title    = "Latent Player Performance Profiles — FIFA World Cup 2022",
+    subtitle = paste0(CHOSEN_PROFILES, "-profile solution (Model ", CHOSEN_MODEL,
+                      ") | Profiles plotted as z-score means (grand mean = 0)"),
+    x        = NULL,
+    y        = "Standardized Mean (z-score)",
+    color    = "Player Profile",
+    caption  = "Data: StatsBomb Open Data | Method: LPA via tidyLPA/mclust\nPerson-centered approach per IO psychology research (Spurk et al., 2020)"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title       = element_text(face = "bold"),
+    legend.position  = "right",
+    panel.grid.minor = element_blank(),
+    axis.text.x      = element_text(size = 10)
+  )
+
+dir.create(here("outputs", "figures"), recursive = TRUE, showWarnings = FALSE)
+ggsave(here("outputs", "figures", "lpa_profile_plot.png"),
+       p_profiles, width = 11, height = 6, dpi = 300)
+message("✓ Profile plot saved")
+
+# -----------------------------------------------------------------------------
+# 5. Profile size bar chart
+# -----------------------------------------------------------------------------
+p_sizes <- profile_assignments %>%
+  count(Profile_Label) %>%
+  mutate(pct = n / sum(n) * 100) %>%
+  ggplot(aes(x = reorder(Profile_Label, -n), y = pct, fill = Profile_Label)) +
+  geom_col(show.legend = FALSE, width = 0.6) +
+  geom_text(aes(label = paste0(round(pct, 1), "%\n(n=", n, ")")),
+            vjust = -0.4, size = 3.5) +
+  scale_fill_manual(values = profile_colors) +
+  scale_y_continuous(limits = c(0, 55)) +
+  labs(
+    title   = "Profile Membership Distribution",
+    x       = NULL,
+    y       = "% of Players",
+    caption = "FIFA World Cup 2022, outfield players with ≥ 180 min (n = 576) | Data: StatsBomb Open Data"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(plot.title  = element_text(face = "bold"),
+        axis.text.x = element_text(size = 10))
+
+ggsave(here("outputs", "figures", "profile_size_distribution.png"),
+       p_sizes, width = 9, height = 5, dpi = 300)
+
+# -----------------------------------------------------------------------------
+# 6. Publication-quality summary table (gt)
+# -----------------------------------------------------------------------------
+profile_table <- profile_assignments %>%
+  group_by(Profile_Label) %>%
+  summarise(
+    n                 = n(),
+    `%`               = round(n() / nrow(profile_assignments) * 100, 1),
+    `npxG/90`         = round(mean(npxG_per90), 3),
+    `xAG/90`          = round(mean(xAG_per90), 3),
+    `Prog Carries/90` = round(mean(prog_carries_per90), 2),
+    `Pressures/90`    = round(mean(pressures_per90), 2),
+    `Aerials/90`      = round(mean(aerials_contested_per90), 2),
+    `Pass Cmp %`      = round(mean(pass_completion_pct), 1),
+    .groups = "drop"
+  )
+
+gt_table <- profile_table %>%
+  gt() %>%
+  tab_header(
+    title    = md("**Latent Player Performance Profiles — FIFA World Cup 2022**"),
+    subtitle = md(paste0("*", CHOSEN_PROFILES, "-profile LPA solution (Model ",
+                         CHOSEN_MODEL, ", equal variances)*"))
+  ) %>%
+  tab_spanner(label = "Attacking",        columns = c(`npxG/90`, `xAG/90`)) %>%
+  tab_spanner(label = "Ball Progression", columns = c(`Prog Carries/90`)) %>%
+  tab_spanner(label = "Defensive",        columns = c(`Pressures/90`, `Aerials/90`)) %>%
+  tab_spanner(label = "Technical",        columns = c(`Pass Cmp %`)) %>%
+  fmt_number(columns = where(is.numeric), decimals = 2) %>%
+  cols_label(Profile_Label = "Profile") %>%
+  tab_source_note("Data: StatsBomb Open Data | Method: tidyLPA/mclust | Aerials = contested aerials (see codebook)") %>%
+  tab_options(table.font.size = 12)
+
+dir.create(here("outputs", "tables"), recursive = TRUE, showWarnings = FALSE)
+gt::gtsave(gt_table, here("outputs", "tables", "profile_summary_table.html"))
+message("✓ Summary table saved")
+
+# -----------------------------------------------------------------------------
+# 7. Notable players per profile
+# -----------------------------------------------------------------------------
+top_players_per_profile <- profile_assignments %>%
+  filter(total_minutes >= 270) %>%              # ≥ 3 full matches
+  group_by(Profile_Label) %>%
+  slice_max(order_by = Certainty, n = 5, with_ties = FALSE) %>%
+  ungroup() %>%
+  select(Profile_Label, player_name, team_name, total_minutes,
+         Certainty) %>%
+  mutate(Certainty = round(Certainty, 3)) %>%
+  arrange(Profile_Label, desc(Certainty))
+
+print(top_players_per_profile, n = 30)
+write_csv(top_players_per_profile,
+          here("outputs", "tables", "notable_players_per_profile.csv"))
+
+message("\n✓ Script 04 complete. Final model saved and visualized.")
