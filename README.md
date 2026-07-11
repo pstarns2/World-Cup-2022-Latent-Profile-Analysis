@@ -75,53 +75,49 @@ The profile plot is the core result: four lines that barely overlap, each with a
 | **Conservative Anchors** | 68 | 23.1 | 0.01 | 0.01 | 3.28 | 11.4 | 1.29 | 82.8 |
 | **Balanced Contributors** | 131 | 44.4 | 0.08 | 0.09 | 3.81 | 13.2 | 1.26 | 81.0 |
  
-**Primary Attackers (21%).** High on *both* finishing (npxG z ≈ +1.1) and creation (xAG z ≈ +0.7), the most aerially involved, and the least secure in possession (pass z ≈ −1.0) — output purchased at the price of possession security. Highest-certainty members: Giroud, Lewandowski, Embolo; Messi, Mbappé, and Neymar classify here too. Note that npxG measures the quality of chances *accumulated*, not conversion — this profile identifies players who consistently occupy high-value attacking situations.
+**Primary Attackers (21%).** High on *both* finishing (npxG z ≈ +1.1) and creation (xAG z ≈ +0.7), the most aerially involved, and the least secure in possession (pass z ≈ −1.0), outputthat typically comes at the price of possession security. Highest-certainty members: Giroud, Lewandowski, Embolo; Messi, Mbappé, and Neymar classify here too. Note that npxG measures the quality of chances *accumulated*, not the conversion of these chances. This profile identifies players who consistently occupy high-value attacking situations and who have teammates that can get them into these high-value position.
  
-**Ball-Playing Defenders (12%).** The most distinctive signature in the data: progressive carrying near +1 SD, the best passing (88.3%), and by far the *least* pressing (z ≈ −1.1) — players who advance the ball into space nobody contests. Members: Stones, Maguire, Laporte, Tim Ream, and Rodri (who played the tournament at center-back for Spain).
+**Ball-Playing Defenders (12%).** The most distinctive signature in the data: progressive carrying near +1 SD, the best passing (88.3%), and by far the *least* pressing (z ≈ −1.1), players who advance the ball into space nobody contests. Members: Stones, Maguire, Laporte, Tim Ream, and Rodri (who played the tournament at center-back for Spain).
  
-**Conservative Anchors (23%).** Near-zero attacking output (npxG and xAG both ≈ 0.01/90) with slightly above-average passing security and unremarkable everything else. These are the low-risk stabilizers — full-backs and holding mids like Mooy, Krychowiak, and Hincapié whose job is to not lose the game.
+**Conservative Anchors (23%).** Near-zero attacking output (npxG and xAG both ≈ 0.01/90) with slightly above-average passing security and unremarkable everything else. These are the low-risk stabilizers, full-backs and holding mids like Mooy, Krychowiak, and Hincapié whose job is to not lose the game.
  
-**Balanced Contributors (44%).** The plurality profile: mildly above average in creation and pressing, mildly below in everything physical. Modrić, Marquinhos, Bernardo Silva, and Konaté all land here — genuinely excellent players whose contribution is spread too evenly for any single dimension to define them.
+**Balanced Contributors (44%).** The plurality profile: mildly above average in creation and pressing, mildly below in everything physical. Modrić, Marquinhos, Bernardo Silva, and Konaté all land here, genuinely excellent players whose contribution is spread too evenly for any single dimension to define them.
  
 ![Profile membership distribution](profile_size_distribution.png)
 
 ### The profile that refused to exist
  
-Five types were hypothesized in advance, including a distinct "Creative Playmaker" defined by chance creation. It never emerged — in no solution did xAG dominate a profile on its own. Instead, the model filed the tournament's elite creators (Messi, Neymar, Bruno Fernandes, Griezmann) into the same profile as its pure finishers. The person-centered conclusion: at this level, *creating and taking high-value chances is one role, not two*. A variable-centered analysis could never have surfaced this — the xAG regression coefficient would have looked healthy either way.
+Five types were hypothesized in advance, including a distinct "Creative Playmaker" defined by chance creation. It never emerged. In no solution did xAG dominate a profile on its own. Instead, the model filed the tournament's elite creators (Messi, Neymar, Bruno Fernandes, Griezmann) into the same profile as its pure finishers. The person-centered conclusion: at this level, *creating and taking high-value chances is one role, not two*. A variable-centered analysis could never have surfaced this, the xAG regression coefficient would have looked healthy either way.
  
 ### Validity check: profiles vs. positions
  
 ![Nominal position by latent profile](profile_position_crosstab.png)
  
-The model never saw positions, so agreement between profile and position is an external validity check — and disagreement is information, not error. Ball-Playing Defenders are 94% nominal defenders; Primary Attackers are 72% forwards, with the "mismatches" being attacking midfielders (Neymar, Griezmann, Bruno Fernandes) whom the model grouped by function rather than formation slot. Across 295 players there are exactly two genuine anomalies — Steven Bergwijn and Granit Xhaka classifying as Ball-Playing Defenders — which is the kind of error rate that builds confidence in the other 293. (Full crosstab: `profile_position_crosstab.csv`; anomalies: `profile_position_mismatches.csv`.)
+The model never saw positions, so agreement between profile and position is an external validity check — and disagreement is information, not error. Ball-Playing Defenders are 94% nominal defenders; Primary Attackers are 72% forwards, with the "mismatches" being attacking midfielders (Neymar, Griezmann, Bruno Fernandes) whom the model grouped by function rather than formation slot. Across 295 players there are exactly two genuine anomalies. Steven Bergwijn and Granit Xhaka classifying as Ball-Playing Defenders. (Full crosstab: `profile_position_crosstab.csv`; anomalies: `profile_position_mismatches.csv`.)
  
 ---
  
 ## Team Composition: Style, Not Destiny
  
-Aggregating profiles to minutes-weighted team shares gives every squad a compositional "fingerprint." With n = 32 teams this is deliberately descriptive — no regression, no causal claims — but the descriptive patterns are striking:
+Aggregating profiles to minutes-weighted team shares gives every squad a compositional "fingerprint." With n = 32 teams this is deliberately descriptive, but the descriptive patterns are intriguing:
  
 ![Team profile composition by tournament stage](team_composition_heatmap.png)
  
-- **The two finalists were compositional twins.** Argentina and France both gave 28% of minutes to Primary Attackers and a majority (59% and 54%) to Balanced Contributors — the only two teams in the tournament with that combination.
+- **The two finalists were compositional twins.** Argentina and France both gave 28% of minutes to Primary Attackers and a majority (59% and 54%) to Balanced Contributors. They are the only two teams in the tournament with this combination.
 - **Composition did not predict advancement.** Ghana gave 45% of minutes to attackers and went home in the group stage; Spain gave 0% and won its group before a Round-of-16 exit on penalties as the tournament's most Balanced-heavy side (76%). Attacker share among group-stage exits (22%) was virtually identical to the champion's (28%).
-- **Anchor-heavy compositions cluster among underdogs.** Costa Rica (62%), Qatar (55%), and Cameroon (49%) devoted the most minutes to Conservative Anchors — consistent with low-block, risk-minimizing game plans — but Australia reached the knockouts with 53%, so even that pattern has exceptions.
+- **Anchor-heavy compositions cluster among underdogs.** Costa Rica (62%), Qatar (55%), and Cameroon (49%) devoted the most minutes to Conservative Anchors.  This is consistent with low-block, risk-minimizing game plans. These 3 teams failed to make it out of the group stage playing this style of soccer but Australia reached the knockouts with 53%, so even that pattern has exceptions.
 - **Ball-Playing Defenders were a knockout-round staple but not a requirement:** 13 of 16 knockout teams fielded at least one, vs. 10 of 16 group-stage exits — and the champion's share was just 5%.
-The people-analytics translation: team profile mix is a *style descriptor*, not a performance predictor — the same lesson as workforce composition dashboards, which describe how an organization distributes its labor without by themselves explaining which org wins. (Data: rare_profile_scarcity.csv`, `rare_profile_by_stage.csv`; exploratory outcome models in scripts `06`.)
  
 ---
  
 ## Limitations
  
-- Profiles describe *World Cup tournament behavior* per 90 minutes — a compressed, tactically distinctive context — and should not be read as stable player traits.
+- Profiles describe *World Cup tournament behavior* per 90 minutes. This a compressed, tactically distinctive context and should not be read as stable player traits.
 - The aerial indicator undercounts won duels (see data note).
 - Players near the 180-minute floor have noisier per-90 rates than tournament ever-presents.
 - npxG/xAG measure chance quality accumulated, not conversion skill; the attacker profile identifies chance-takers, not proven finishers.
 - Team-level patterns are descriptive; n = 32 supports no inferential claims.
-## What This Project Demonstrates
- 
-End-to-end analytical ownership: raw event-data engineering (reconstructing player minutes from substitution events), catching and correcting a data bug whose fix overturned the original model selection, principled indicator construction with explicit construct mapping, formal mixture-model enumeration with transparent tradeoffs, programmatic label assignment that cannot drift from model output, and interpretation that lets the data overrule prior hypotheses. The method translates directly to people analytics: the same pipeline recovers employee typologies from performance, collaboration, and engagement data.
- 
+  
 ---
  
 ## Repository Structure
