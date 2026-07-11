@@ -93,7 +93,7 @@ Five types were hypothesized in advance, including a distinct "Creative Playmake
  
 ![Nominal position by latent profile](profile_position_crosstab.png)
  
-The model never saw positions, so agreement between profile and position is an external validity check — and disagreement is information, not error. Ball-Playing Defenders are 94% nominal defenders; Primary Attackers are 72% forwards, with the "mismatches" being attacking midfielders (Neymar, Griezmann, Bruno Fernandes) whom the model grouped by function rather than formation slot. Across 295 players there are exactly two genuine anomalies. Steven Bergwijn and Granit Xhaka classifying as Ball-Playing Defenders. (Full crosstab: `profile_position_crosstab.csv`; anomalies: `profile_position_mismatches.csv`.)
+The model never saw positions, so agreement between profile and position is an external validity check. Any disagreement is useful information about the unique qualities of specific players. Ball-Playing Defenders are 94% nominal defenders; Primary Attackers are 72% forwards, with the "mismatches" being attacking midfielders (Neymar, Griezmann, Bruno Fernandes) whom the model grouped by function rather than formation slot. Across 295 players there are exactly two genuine anomalies. Steven Bergwijn and Granit Xhaka classifying as Ball-Playing Defenders. (Full crosstab: `profile_position_crosstab.csv`; anomalies: `profile_position_mismatches.csv`.)
  
 ---
  
