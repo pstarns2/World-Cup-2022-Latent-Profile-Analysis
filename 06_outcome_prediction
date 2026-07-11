@@ -1,0 +1,160 @@
+# =============================================================================
+# 06_outcome_prediction.R
+# World Cup LPA Project — Predicting Tournament Outcomes from Profile Composition
+#
+# Purpose: Model the relationship between team profile composition and
+#          tournament advancement using ordinal regression and random forest.
+# =============================================================================
+
+library(tidyverse)
+library(broom)        # tidy model output
+library(randomForest) # install.packages("randomForest")
+library(ggplot2)
+library(here)
+# NOTE: MASS is used via MASS::polr() and deliberately NOT attached with
+# library(MASS) — attaching it after tidyverse masks dplyr::select().
+
+set.seed(42)
+
+# -----------------------------------------------------------------------------
+# 1. Load team composition + outcome data
+# -----------------------------------------------------------------------------
+team_data <- readRDS(here("data", "processed", "team_composition_data.rds"))
+
+# Profile composition columns (janitor::clean_names() versions of the labels
+# assigned in 04_lpa_final_model.R)
+profile_cols <- c("primary_attackers", "ball_playing_defenders",
+                  "conservative_anchors", "balanced_contributors")
+
+# Ensure all profile cols exist; fill missing with 0
+for (col in profile_cols) {
+  if (!col %in% names(team_data)) team_data[[col]] <- 0
+}
+
+# Outcome: ordinal Stage_Num (1=Group Stage ... 6=Champion)
+team_data <- team_data %>%
+  mutate(Stage_Ord = factor(Stage_Num, ordered = TRUE))
+
+# -----------------------------------------------------------------------------
+# 2. Descriptive: Do advancing teams differ in profile composition?
+# -----------------------------------------------------------------------------
+team_data %>%
+  mutate(Advanced = ifelse(Stage_Num >= 2, "Advanced (R16+)", "Eliminated")) %>%
+  group_by(Advanced) %>%
+  summarise(across(all_of(profile_cols), mean), .groups = "drop") %>%
+  pivot_longer(cols = all_of(profile_cols), names_to = "Profile", values_to = "Mean_Pct") %>%
+  ggplot(aes(x = Profile, y = Mean_Pct, fill = Advanced)) +
+  geom_col(position = "dodge") +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(values = c("Advanced (R16+)" = "#2196F3", "Eliminated" = "#E63946")) +
+  labs(
+    title    = "Profile Composition: Advancing vs. Eliminated Teams",
+    subtitle = "Mean % of team minutes in each profile",
+    x        = NULL, y = "Mean % Team Minutes",
+    fill     = NULL,
+    caption  = "FIFA World Cup 2022"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(plot.title = element_text(face = "bold"),
+        axis.text.x = element_text(angle = 25, hjust = 1))
+
+ggsave(here("outputs", "figures", "advancing_vs_eliminated_profiles.png"),
+       last_plot(), width = 10, height = 6, dpi = 300)
+
+# -----------------------------------------------------------------------------
+# 3. Ordinal logistic regression (Proportional Odds Model)
+#    Standard for ordered categorical outcomes in IO research
+#    DV: Tournament stage (ordered)
+#    IV: Profile composition proportions
+#
+#    Note: With n=32 teams, this is exploratory/descriptive.
+#    Report effect sizes and CIs; avoid overinterpreting p-values.
+# -----------------------------------------------------------------------------
+formula_ord <- as.formula(
+  paste("Stage_Ord ~", paste(profile_cols[-length(profile_cols)], collapse = " + "))
+  # Drop one profile as reference category (compositional data constraint)
+)
+
+model_ord <- MASS::polr(formula_ord, data = team_data, Hess = TRUE)
+summary(model_ord)
+
+# Tidy output with confidence intervals
+ord_results <- tidy(model_ord, conf.int = TRUE, exponentiate = FALSE) %>%
+  filter(coef.type == "coefficient") %>%
+  mutate(
+    OR = exp(estimate),       # Odds ratios
+    OR_lo = exp(conf.low),
+    OR_hi = exp(conf.high)
+  )
+
+print(ord_results)
+write_csv(ord_results, here("outputs", "tables", "ordinal_regression_results.csv"))
+
+# OR forest plot
+p_or <- ord_results %>%
+  ggplot(aes(x = OR, y = reorder(term, OR))) +
+  geom_vline(xintercept = 1, linetype = "dashed", color = "gray60") +
+  geom_errorbarh(aes(xmin = OR_lo, xmax = OR_hi), height = 0.2, color = "gray40") +
+  geom_point(size = 4, color = "#2196F3") +
+  scale_x_log10() +
+  labs(
+    title    = "Ordinal Regression: Profile Composition → Tournament Stage",
+    subtitle = "Odds ratios with 95% CIs | OR > 1: profile % associated with advancement",
+    x        = "Odds Ratio (log scale)",
+    y        = "Predictor",
+    caption  = "n = 32 teams | FIFA World Cup 2022 | Reference: Balanced Contributors"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(plot.title = element_text(face = "bold"))
+
+ggsave(here("outputs", "figures", "ordinal_regression_forest.png"),
+       p_or, width = 10, height = 6, dpi = 300)
+
+# -----------------------------------------------------------------------------
+# 4. Random Forest (non-parametric, handles small n well)
+#    Provides variable importance ranking — which profile matters most?
+# -----------------------------------------------------------------------------
+rf_data <- team_data %>%
+  select(Stage_Num, all_of(profile_cols)) %>%
+  drop_na()
+
+model_rf <- randomForest(
+  Stage_Num ~ .,
+  data       = rf_data,
+  ntree      = 1000,
+  importance = TRUE
+)
+
+message("RF R² (OOB): ", round(1 - model_rf$mse[1000] / var(rf_data$Stage_Num), 3))
+
+# Variable importance plot (from randomForest's own importance scores —
+# no vip dependency needed)
+importance_df <- importance(model_rf) %>%
+  as.data.frame() %>%
+  rownames_to_column("Profile") %>%
+  rename(PctIncMSE = `%IncMSE`)
+
+p_vip <- importance_df %>%
+  ggplot(aes(x = PctIncMSE, y = reorder(Profile, PctIncMSE))) +
+  geom_col(fill = "#FF9800", width = 0.6) +
+  labs(
+    title    = "Random Forest Variable Importance",
+    subtitle = "Which profile composition most predicts tournament advancement?",
+    x        = "% Increase in MSE when permuted",
+    y        = NULL,
+    caption  = "Based on %IncMSE from 1,000 trees | n = 32 teams (exploratory)"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(plot.title = element_text(face = "bold"))
+
+ggsave(here("outputs", "figures", "rf_variable_importance.png"),
+       p_vip, width = 8, height = 5, dpi = 300, bg = "white")
+
+# -----------------------------------------------------------------------------
+# 5. Save models for 2026 projection
+# -----------------------------------------------------------------------------
+saveRDS(model_ord, here("outputs", "models", "ordinal_model.rds"))
+saveRDS(model_rf,  here("outputs", "models", "rf_model.rds"))
+
+message("\n✓ Outcome prediction complete")
+message("  Models saved — ready for 2026 roster data in 07_2026_projection.R")
