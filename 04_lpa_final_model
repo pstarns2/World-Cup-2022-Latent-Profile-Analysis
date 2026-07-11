@@ -5,24 +5,18 @@
 # Purpose: Extract the chosen profile solution, assign profile labels,
 #          produce the main visualization, and validate
 #          profile assignments.
-#
 # =============================================================================
+
 
 library(tidyverse)
 library(tidyLPA)
-library(gt)          # publication tables
+library(gt)         
 library(here)
 
 set.seed(42)
 
-# -----------------------------------------------------------------------------
-# Chosen solution (from 03_lpa_model_selection.R):
-#   Model 1 (equal variances, zero covariances), 5 profiles
-#   Entropy = .81, BLRT p < .01; smallest profile 3.1% (documented deviation
-#   from the 5% guideline — retained for substantive interpretability)
-# -----------------------------------------------------------------------------
-CHOSEN_MODEL    <- 1
-CHOSEN_PROFILES <- 5
+CHOSEN_MODEL    <- 2
+CHOSEN_PROFILES <- 4
 
 # Load data and saved model objects
 lpa_data_scaled <- readRDS(here("data", "processed", "lpa_data_scaled.rds"))
@@ -65,12 +59,11 @@ message("Smallest profile: ",
         round(min(prop.table(table(profile_assignments$Class))) * 100, 1), "%)")
 
 # -----------------------------------------------------------------------------
-# 2. Data-driven profile labeling
+# 2. Data-driven profile labeling (4-profile solution)
 #    Each label is claimed by the class whose MEANS earn it, in this order:
-#      Clinical Finishers     = highest z_npxG
+#      Primary Attackers      = highest z_npxG
 #      Ball-Playing Defenders = highest z_prog_carries (among unclaimed)
-#      Pressing Engines       = highest z_pressures (among unclaimed)
-#      Limited Role Players   = lowest z_pass_completion (among unclaimed)
+#      Conservative Anchors   = lowest z_xAG (among unclaimed)
 #      Balanced Contributors  = the remaining class
 # -----------------------------------------------------------------------------
 class_z_means <- profile_assignments %>%
@@ -85,17 +78,18 @@ claim <- function(df, claimed, var, direction = c("max", "min")) {
 }
 
 claimed <- integer(0)
-lab_finisher <- claim(class_z_means, claimed, "z_npxG_per90", "max");            claimed <- c(claimed, lab_finisher)
-lab_bpd      <- claim(class_z_means, claimed, "z_prog_carries_per90", "max");    claimed <- c(claimed, lab_bpd)
-lab_press    <- claim(class_z_means, claimed, "z_pressures_per90", "max");       claimed <- c(claimed, lab_press)
-lab_limited  <- claim(class_z_means, claimed, "z_pass_completion_pct", "min");   claimed <- c(claimed, lab_limited)
+lab_attack <- claim(class_z_means, claimed, "z_npxG_per90", "max")
+claimed    <- c(claimed, lab_attack)
+lab_bpd    <- claim(class_z_means, claimed, "z_prog_carries_per90", "max")
+claimed    <- c(claimed, lab_bpd)
+lab_anchor <- claim(class_z_means, claimed, "z_xAG_per90", "min")
+claimed    <- c(claimed, lab_anchor)
 lab_balanced <- setdiff(class_z_means$Class, claimed)
 
-profile_labels <- c("Clinical Finishers", "Ball-Playing Defenders",
-                    "Pressing Engines", "Limited Role Players",
-                    "Balanced Contributors")
+profile_labels <- c("Primary Attackers", "Ball-Playing Defenders",
+                    "Conservative Anchors", "Balanced Contributors")
 names(profile_labels) <- as.character(
-  c(lab_finisher, lab_bpd, lab_press, lab_limited, lab_balanced))
+  c(lab_attack, lab_bpd, lab_anchor, lab_balanced))
 
 stopifnot(length(unique(names(profile_labels))) == CHOSEN_PROFILES)
 
@@ -103,9 +97,8 @@ message("\nLabel assignment (verify against class means below):")
 print(profile_labels)
 print(class_z_means %>% mutate(across(where(is.numeric), ~round(.x, 2))))
 
-label_levels <- c("Clinical Finishers", "Pressing Engines",
-                  "Ball-Playing Defenders", "Limited Role Players",
-                  "Balanced Contributors")
+label_levels <- c("Primary Attackers", "Ball-Playing Defenders",
+                  "Conservative Anchors", "Balanced Contributors")
 
 profile_assignments <- profile_assignments %>%
   mutate(
@@ -134,10 +127,9 @@ print(profile_means)
 # 4. Main profile plot (z-score means by profile)
 # -----------------------------------------------------------------------------
 profile_colors <- c(
-  "Clinical Finishers"     = "#E63946",
-  "Pressing Engines"       = "#FF9800",
+  "Primary Attackers"      = "#E63946",
   "Ball-Playing Defenders" = "#2196F3",
-  "Limited Role Players"   = "#4CAF50",
+  "Conservative Anchors"   = "#4CAF50",
   "Balanced Contributors"  = "#9C27B0"
 )
 
@@ -167,7 +159,7 @@ p_profiles <- z_profile_means %>%
   labs(
     title    = "Latent Player Performance Profiles — FIFA World Cup 2022",
     subtitle = paste0(CHOSEN_PROFILES, "-profile solution (Model ", CHOSEN_MODEL,
-                      ") | Profiles plotted as z-score means (grand mean = 0)"),
+                      ", varying variances) | z-score means (grand mean = 0)"),
     x        = NULL,
     y        = "Standardized Mean (z-score)",
     color    = "Player Profile",
@@ -183,7 +175,7 @@ p_profiles <- z_profile_means %>%
 
 dir.create(here("outputs", "figures"), recursive = TRUE, showWarnings = FALSE)
 ggsave(here("outputs", "figures", "lpa_profile_plot.png"),
-       p_profiles, width = 11, height = 6, dpi = 300)
+       p_profiles, width = 11, height = 6, dpi = 300, bg = "white")
 message("✓ Profile plot saved")
 
 # -----------------------------------------------------------------------------
@@ -202,14 +194,15 @@ p_sizes <- profile_assignments %>%
     title   = "Profile Membership Distribution",
     x       = NULL,
     y       = "% of Players",
-    caption = "FIFA World Cup 2022, outfield players with ≥ 180 min (n = 576) | Data: StatsBomb Open Data"
+    caption = paste0("FIFA World Cup 2022, outfield players with ≥ 180 min (n = ",
+                     nrow(profile_assignments), ") | Data: StatsBomb Open Data")
   ) +
   theme_minimal(base_size = 13) +
   theme(plot.title  = element_text(face = "bold"),
         axis.text.x = element_text(size = 10))
 
 ggsave(here("outputs", "figures", "profile_size_distribution.png"),
-       p_sizes, width = 9, height = 5, dpi = 300)
+       p_sizes, width = 9, height = 5, dpi = 300, bg = "white")
 
 # -----------------------------------------------------------------------------
 # 6. Publication-quality summary table (gt)
@@ -233,7 +226,7 @@ gt_table <- profile_table %>%
   tab_header(
     title    = md("**Latent Player Performance Profiles — FIFA World Cup 2022**"),
     subtitle = md(paste0("*", CHOSEN_PROFILES, "-profile LPA solution (Model ",
-                         CHOSEN_MODEL, ", equal variances)*"))
+                         CHOSEN_MODEL, ", varying variances)*"))
   ) %>%
   tab_spanner(label = "Attacking",        columns = c(`npxG/90`, `xAG/90`)) %>%
   tab_spanner(label = "Ball Progression", columns = c(`Prog Carries/90`)) %>%
@@ -250,6 +243,8 @@ message("✓ Summary table saved")
 
 # -----------------------------------------------------------------------------
 # 7. Notable players per profile
+#    Selected by classification certainty, with a minutes floor so exemplars
+#    are tournament regulars.
 # -----------------------------------------------------------------------------
 top_players_per_profile <- profile_assignments %>%
   filter(total_minutes >= 270) %>%              # ≥ 3 full matches
@@ -261,8 +256,9 @@ top_players_per_profile <- profile_assignments %>%
   mutate(Certainty = round(Certainty, 3)) %>%
   arrange(Profile_Label, desc(Certainty))
 
-print(top_players_per_profile, n = 30)
+print(top_players_per_profile, n = 20)
 write_csv(top_players_per_profile,
           here("outputs", "tables", "notable_players_per_profile.csv"))
 
 message("\n✓ Script 04 complete. Final model saved and visualized.")
+
