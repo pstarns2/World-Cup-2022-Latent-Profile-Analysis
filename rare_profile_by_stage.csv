@@ -1,0 +1,13 @@
+Stage,Profile_Label,teams,mean_pct_mins,teams_with_any
+Champion,Clinical Finishers,1,0.03340256143994462,1
+Champion,Ball-Playing Defenders,1,0,0
+Final,Clinical Finishers,1,0.07730627306273062,1
+Final,Ball-Playing Defenders,1,0.09132841328413284,1
+Semi-final,Clinical Finishers,2,0.08582124976433703,2
+Semi-final,Ball-Playing Defenders,2,0,0
+Quarter-final,Clinical Finishers,4,0.025361180904522614,1
+Quarter-final,Ball-Playing Defenders,4,0.1418464473913439,4
+Round of 16,Clinical Finishers,8,0.060200315288395326,5
+Round of 16,Ball-Playing Defenders,8,0.06823806440432803,3
+Group Stage,Clinical Finishers,16,0.0908138861672677,10
+Group Stage,Ball-Playing Defenders,16,0.028542585612538394,3
