@@ -1,0 +1,177 @@
+# =============================================================================
+# 03_lpa_model_selection.R
+# World Cup LPA Project — Model Enumeration & Selection
+#
+# Purpose: Fit LPA solutions from 1 to 6 profiles and compare fit using
+#          information criteria and statistical tests. Select the optimal
+#          number of profiles.
+#
+# Key references:
+#   - Rosenberg et al. (2018) tidyLPA. JOSS.
+#   - Nylund et al. (2007) LRT comparison. Structural Equation Modeling.
+#   - Spurk et al. (2020) LPA in work/org psychology. JOHP.
+# =============================================================================
+
+library(tidyverse)
+library(tidyLPA)    # install.packages("tidyLPA")
+library(mclust)     # install.packages("mclust") — backend for tidyLPA
+library(ggplot2)
+library(here)
+
+set.seed(42) 
+
+# -----------------------------------------------------------------------------
+# 1. Load preprocessed data
+# -----------------------------------------------------------------------------
+lpa_data_scaled <- readRDS(here("data", "processed", "lpa_data_scaled.rds"))
+
+# The z-scored indicators for model fitting (names as created in 02)
+z_indicators <- c(
+  "z_npxG_per90",
+  "z_xAG_per90",
+  "z_prog_carries_per90",
+  "z_pressures_per90",
+  "z_pass_completion_pct",
+  "z_aerials_contested_per90"
+)
+
+lpa_input <- lpa_data_scaled %>%
+  select(all_of(z_indicators))
+
+# -----------------------------------------------------------------------------
+# 2. Fit model comparison: 1 to 6 profiles
+#
+# tidyLPA model specifications (variance/covariance structure):
+#   Model 1: Equal variances, covariances fixed to 0  (most parsimonious)
+#   Model 2: Varying variances, covariances fixed to 0
+#   Model 3: Equal variances and covariances
+#   Model 6: Varying variances and covariances         (most complex)
+#
+# Best practice (Spurk et al., 2020): Start with Model 1 (most common in IO),
+# compare to Model 2 and 6 if fit is poor.
+# -----------------------------------------------------------------------------
+
+# Model 1: Equal variances, zero covariances — standard starting point
+models_m1 <- lpa_input %>%
+  estimate_profiles(
+    n_profiles   = 1:6,
+    models       = 1       # equal var, zero cov
+  )
+
+# Model 2: Varying variances, zero covariances — allows profiles to differ in spread
+models_m2 <- lpa_input %>%
+  estimate_profiles(
+    n_profiles   = 1:6,
+    models       = 2
+  )
+
+# Model 6: Varying variances AND covariances — most flexible, highest risk of
+#           non-convergence with small samples
+models_m6 <- lpa_input %>%
+  estimate_profiles(
+    n_profiles   = 2:6,    # skip 1-profile (trivial)
+    models       = 6
+  )
+
+message("✓ Model fitting complete")
+
+# -----------------------------------------------------------------------------
+# 3. Extract and compare fit statistics
+#
+# Key indices:
+#   BIC  — Bayesian Information Criterion (lower = better; penalizes complexity)
+#   AIC  — Akaike Information Criterion  (lower = better; less conservative)
+#   AWE  — Approximate Weight of Evidence (lower = better)
+#   CLC  — Classification Likelihood Criterion
+#   Entropy — Classification certainty (higher = better; > .80 is good)
+#   LRT p  — Lo-Mendell-Rubin likelihood ratio test (p < .05 = k better than k-1)
+# -----------------------------------------------------------------------------
+fit_m1 <- get_fit(models_m1) %>% mutate(Model = "M1 (Equal Var)")
+fit_m2 <- get_fit(models_m2) %>% mutate(Model = "M2 (Varying Var)")
+fit_m6 <- get_fit(models_m6) %>% mutate(Model = "M6 (Varying Var+Cov)")
+
+fit_all <- bind_rows(fit_m1, fit_m2, fit_m6) %>%
+  select(Model, Classes, AIC, BIC, Entropy, n_min, n_max, BLRT_p) %>%
+  arrange(Model, Classes)
+
+print(fit_all, n = 40)
+
+# Save fit table
+dir.create(here("outputs", "tables"), recursive = TRUE, showWarnings = FALSE)
+write_csv(fit_all, here("outputs", "tables", "model_fit_comparison.csv"))
+
+# -----------------------------------------------------------------------------
+# 4. Visualize fit statistics (elbow plots)
+#    Standard figure in IO LPA papers
+# -----------------------------------------------------------------------------
+dir.create(here("outputs", "figures"), recursive = TRUE, showWarnings = FALSE)
+
+# BIC elbow plot
+p_bic <- fit_all %>%
+  ggplot(aes(x = Classes, y = BIC, color = Model, group = Model)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 3) +
+  scale_x_continuous(breaks = 1:6) +
+  labs(
+    title    = "Model Selection: BIC by Number of Profiles",
+    subtitle = "Lower BIC indicates better fit; look for 'elbow' inflection point",
+    x        = "Number of Profiles",
+    y        = "BIC",
+    color    = "Model Specification",
+    caption  = "FIFA World Cup 2022 Player Data"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "bottom")
+
+ggsave(here("outputs", "figures", "bic_elbow_plot.png"),
+       p_bic, width = 9, height = 5, dpi = 300)
+
+# Entropy plot
+p_entropy <- fit_all %>%
+  ggplot(aes(x = Classes, y = Entropy, color = Model, group = Model)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 3) +
+  geom_hline(yintercept = 0.80, linetype = "dashed", color = "gray50") +
+  annotate("text", x = 1.3, y = 0.82, label = "Entropy = .80 threshold",
+           size = 3.5, color = "gray40") +
+  scale_x_continuous(breaks = 1:6) +
+  scale_y_continuous(limits = c(0.5, 1.0)) +
+  labs(
+    title    = "Classification Certainty: Entropy by Number of Profiles",
+    subtitle = "Higher entropy (> .80) indicates clearer profile separation",
+    x        = "Number of Profiles",
+    y        = "Entropy",
+    color    = "Model Specification",
+    caption  = "FIFA World Cup 2022 Player Data"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "bottom")
+
+ggsave(here("outputs", "figures", "entropy_plot.png"),
+       p_entropy, width = 9, height = 5, dpi = 300)
+
+message("✓ Fit plots saved to outputs/figures/")
+
+# -----------------------------------------------------------------------------
+# 5. Decision framework
+#    Apply the IO standard 4-criteria approach (Spurk et al., 2020):
+#    (1) BIC lowest or elbow point
+#    (2) Entropy > .80
+#    (3) BLRT p < .05 (k profiles better than k-1)
+#    (4) Minimum profile size > 5% of sample (avoid trivially small profiles)
+#    (5) Theoretical interpretability
+# -----------------------------------------------------------------------------
+message("\n--- Model Selection Summary ---")
+message("Review the fit table and plots. Apply these criteria:")
+message("  1. Find BIC elbow (point of diminishing return in model improvement)")
+message("  2. Prefer solutions with Entropy > .80")
+message("  3. Prefer solutions where BLRT p < .05")
+message("  4. Reject solutions where any profile has < 5% of sample (n_min)")
+message("  5. Choose the solution that is theoretically interpretable")
+message("\nSet your chosen solution in 04_lpa_final_model.R")
+
+# Save full model objects for reproducibility
+dir.create(here("outputs", "models"), recursive = TRUE, showWarnings = FALSE)
+saveRDS(models_m1, here("outputs", "models", "lpa_models_m1.rds"))
+saveRDS(models_m2, here("outputs", "models", "lpa_models_m2.rds"))
+saveRDS(models_m6, here("outputs", "models", "lpa_models_m6.rds"))
