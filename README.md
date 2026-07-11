@@ -56,15 +56,15 @@ LPA solutions with 1–6 profiles were fit via `tidyLPA`/`mclust` under three va
  
 **Selected: 4-profile, varying-variance solution (M2).** Within M2, BIC reaches a local minimum at k = 4 (4,356; k = 5 is *worse* at 4,367), entropy peaks at .84, the bootstrapped LRT is significant (p < .01), and every profile exceeds 10% of the sample. The 6-profile solution buys a lower BIC at the cost of weaker classification certainty, a near-threshold smallest profile, and two additional classes without clear substantive identity. The 3-profile solution collapses distinctions the 4-profile solution shows are real.
  
-![BIC by number of profiles](outputs/figures/bic_elbow_plot.png)
+![BIC by number of profiles](bic_elbow_plot.png)
  
-![Entropy by number of profiles](outputs/figures/entropy_plot.png)
+![Entropy by number of profiles](entropy_plot.png)
 
 ---
  
 ## Results: The Five Profiles
 
-![Latent player performance profiles — z-score means by profile](outputs/figures/lpa_profile_plot.png)
+![Latent player performance profiles — z-score means by profile](lpa_profile_plot.png)
  
 The profile plot is the core result: four lines that barely overlap, each with a distinct signature. Profile means on the original scale:
  
@@ -83,7 +83,7 @@ The profile plot is the core result: four lines that barely overlap, each with a
  
 **Balanced Contributors (44%).** The plurality profile: mildly above average in creation and pressing, mildly below in everything physical. Modrić, Marquinhos, Bernardo Silva, and Konaté all land here — genuinely excellent players whose contribution is spread too evenly for any single dimension to define them.
  
-![Profile membership distribution](outputs/figures/profile_size_distribution.png)
+![Profile membership distribution](profile_size_distribution.png)
 
 ### The profile that refused to exist
  
@@ -91,9 +91,9 @@ Five types were hypothesized in advance, including a distinct "Creative Playmake
  
 ### Validity check: profiles vs. positions
  
-![Nominal position by latent profile](outputs/figures/profile_position_crosstab.png)
+![Nominal position by latent profile](profile_position_crosstab.png)
  
-The model never saw positions, so agreement between profile and position is an external validity check — and disagreement is information, not error. Ball-Playing Defenders are 94% nominal defenders; Primary Attackers are 72% forwards, with the "mismatches" being attacking midfielders (Neymar, Griezmann, Bruno Fernandes) whom the model grouped by function rather than formation slot. Across 295 players there are exactly two genuine anomalies — Steven Bergwijn and Granit Xhaka classifying as Ball-Playing Defenders — which is the kind of error rate that builds confidence in the other 293. (Full crosstab: `outputs/tables/profile_position_crosstab.csv`; anomalies: `profile_position_mismatches.csv`.)
+The model never saw positions, so agreement between profile and position is an external validity check — and disagreement is information, not error. Ball-Playing Defenders are 94% nominal defenders; Primary Attackers are 72% forwards, with the "mismatches" being attacking midfielders (Neymar, Griezmann, Bruno Fernandes) whom the model grouped by function rather than formation slot. Across 295 players there are exactly two genuine anomalies — Steven Bergwijn and Granit Xhaka classifying as Ball-Playing Defenders — which is the kind of error rate that builds confidence in the other 293. (Full crosstab: `profile_position_crosstab.csv`; anomalies: `profile_position_mismatches.csv`.)
  
 ---
  
@@ -101,13 +101,13 @@ The model never saw positions, so agreement between profile and position is an e
  
 Aggregating profiles to minutes-weighted team shares gives every squad a compositional "fingerprint." With n = 32 teams this is deliberately descriptive — no regression, no causal claims — but the descriptive patterns are striking:
  
-![Team profile composition by tournament stage](outputs/figures/team_composition_heatmap.png)
+![Team profile composition by tournament stage](team_composition_heatmap.png)
  
 - **The two finalists were compositional twins.** Argentina and France both gave 28% of minutes to Primary Attackers and a majority (59% and 54%) to Balanced Contributors — the only two teams in the tournament with that combination.
 - **Composition did not predict advancement.** Ghana gave 45% of minutes to attackers and went home in the group stage; Spain gave 0% and won its group before a Round-of-16 exit on penalties as the tournament's most Balanced-heavy side (76%). Attacker share among group-stage exits (22%) was virtually identical to the champion's (28%).
 - **Anchor-heavy compositions cluster among underdogs.** Costa Rica (62%), Qatar (55%), and Cameroon (49%) devoted the most minutes to Conservative Anchors — consistent with low-block, risk-minimizing game plans — but Australia reached the knockouts with 53%, so even that pattern has exceptions.
 - **Ball-Playing Defenders were a knockout-round staple but not a requirement:** 13 of 16 knockout teams fielded at least one, vs. 10 of 16 group-stage exits — and the champion's share was just 5%.
-The people-analytics translation: team profile mix is a *style descriptor*, not a performance predictor — the same lesson as workforce composition dashboards, which describe how an organization distributes its labor without by themselves explaining which org wins. (Data: `outputs/tables/rare_profile_scarcity.csv`, `rare_profile_by_stage.csv`; exploratory outcome models in scripts `06`.)
+The people-analytics translation: team profile mix is a *style descriptor*, not a performance predictor — the same lesson as workforce composition dashboards, which describe how an organization distributes its labor without by themselves explaining which org wins. (Data: rare_profile_scarcity.csv`, `rare_profile_by_stage.csv`; exploratory outcome models in scripts `06`.)
  
 ---
  
@@ -135,8 +135,6 @@ wc-player-profiles/
 ├── 05_team_composition.R          # Minutes-weighted team profile mix
 ├── 05b_composition_descriptives.R # Heatmap, position crosstab, scarcity analysis
 ├── 06_outcome_prediction.R        # Exploratory outcome models (n = 32; descriptive)
-├── data/                          # raw (StatsBomb) and processed (analysis-ready)
-├── outputs/                       # figures, tables, saved model objects
 └── codebook.md                    # variable definitions
 ```
  
@@ -151,4 +149,7 @@ Requirements: `tidyverse`, `tidyLPA`, `mclust`, `StatsBombR`, `here` (see `packa
 - Humphrey, S. E., Hollenbeck, J. R., Meyer, C. J., & Ilgen, D. R. (2007). Trait configurations in self-managed teams. *Journal of Applied Psychology*.
 - Rosenberg, J. M., et al. (2018). tidyLPA: An R package to easily carry out latent profile analysis. *Journal of Open Source Software*.
 - StatsBomb Open Data: https://github.com/statsbomb/open-data
+
+## AI Disclosure
+-This project was completed in collaboration with Claude.
  
