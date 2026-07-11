@@ -86,7 +86,7 @@ Profile means on the original scale:
  
 **Balanced Contributors (46.5%).** Nearly half the sample: reliable circulation, modest event volume everywhere.
  
-![Profile membership distribution](outputs/figures/profile_size_distribution.png)
+![Profile membership distribution](profile_size_distribution.png)
  
 *(Full fit table: `outputs/tables/model_fit_comparison.csv`; profile exemplars: `outputs/tables/notable_players_per_profile.csv`.)*
  
