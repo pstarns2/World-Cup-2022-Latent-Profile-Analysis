@@ -27,7 +27,7 @@ A World Cup is an unusually clean opportunity to deploy the method because it ha
  
 **Source:** StatsBomb Open DatA: This source contains every pass, shot, carry, pressure, and duel from all 64 matches. Player minutes were reconstructed from Starting XI and substitution events, capped at 90 per match (extra time excluded for opportunity consistency).
  
-**Inclusion:** ≥180 minutes played, ≥10 passes attempted, goalkeepers excluded. Final n = 576.
+**Inclusion:** The analysis include players that logger ≥180 minutes played and ≥10 passes attempted. The analysis excluded goalkeepers. n = 576.
  
 Six per-90 indicators spanning attack, creation, progression, defense, and technical reliability, each z-scored on the sample:
  
