@@ -10,8 +10,7 @@ Model-based clustering (tidyLPA/mclust) of 576 World Cup players on 6 game based
 ---
  
 ## Motivation
- 
-I am doing this because I love soccer and I love data.
+With a passion for soccer and people analytics, I saw an opportunity to apply methods across industry. Thie project is meant to act as a cross-walk for how an LPA might be applied in a sporting context. Given that soccer is a complex game that is often reduced to averages, I wanted to apply a more rigorous methodology to help make sense of the underlying data. 
 
 In people analytics, variable-centered methods (regression, factor analysis) describe the *average* person: "does shooting accuracy predict goals?" However, person-centered methods like LPA ask: "**what kinds of people exist in this population?**" This mirrors a long line of IO psychology research on engagement profiles, burnout typologies, and team composition (Humphrey et al., 2007; Spurk et al., 2020). Looking at the data through this lens is also more useful question whenever teams rely on complementary types rather than interchangeable averages.
  
