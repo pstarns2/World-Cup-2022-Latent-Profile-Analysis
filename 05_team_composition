@@ -1,0 +1,109 @@
+# =============================================================================
+# 05_team_composition.R
+# World Cup LPA Project — Team-Level Profile Composition
+#
+# Purpose: Aggregate player-level profiles to team level. Compute each team's
+#          minutes-weighted "profile mix" and save the team-level dataset
+#          for outcome modeling (script 06).
+# Key reference: Humphrey, Hollenbeck, Meyer, & Ilgen (2007, JAP)
+# =============================================================================
+
+library(tidyverse)
+library(here)
+
+# -----------------------------------------------------------------------------
+# 1. Load profile assignments + define tournament results
+# -----------------------------------------------------------------------------
+profile_assignments <- readRDS(here("data", "processed", "profile_assignments.rds"))
+
+# WC 2022 team finishing positions (manually coded from tournament results)
+# Stage reached: Group(1), R16(2), QF(3), SF(4), Final(5), Champion(6)
+tournament_results <- tribble(
+  ~Squad,              ~Stage,          ~Stage_Num, ~Points_GS,
+  "Argentina",         "Champion",       6,          6,
+  "France",            "Final",          5,          6,
+  "Croatia",           "Semi-final",     4,          5,
+  "Morocco",           "Semi-final",     4,          7,
+  "Netherlands",       "Quarter-final",  3,          7,
+  "Brazil",            "Quarter-final",  3,          6,
+  "England",           "Quarter-final",  3,          7,
+  "Portugal",          "Quarter-final",  3,          6,
+  "Japan",             "Round of 16",    2,          6,
+  "South Korea",       "Round of 16",    2,          4,
+  "Australia",         "Round of 16",    2,          6,
+  "Switzerland",       "Round of 16",    2,          6,
+  "Senegal",           "Round of 16",    2,          6,
+  "United States",     "Round of 16",    2,          5,
+  "Poland",            "Round of 16",    2,          4,
+  "Spain",             "Round of 16",    2,          4,
+  "Germany",           "Group Stage",    1,          4,
+  "Belgium",           "Group Stage",    1,          4,
+  "Uruguay",           "Group Stage",    1,          4,
+  "Mexico",            "Group Stage",    1,          4,
+  "Denmark",           "Group Stage",    1,          1,
+  "Serbia",            "Group Stage",    1,          1,
+  "Ecuador",           "Group Stage",    1,          4,
+  "Canada",            "Group Stage",    1,          0,
+  "Ghana",             "Group Stage",    1,          3,
+  "Cameroon",          "Group Stage",    1,          4,
+  "Tunisia",           "Group Stage",    1,          4,
+  "Costa Rica",        "Group Stage",    1,          3,
+  "Saudi Arabia",      "Group Stage",    1,          3,
+  "Iran",              "Group Stage",    1,          3,
+  "Wales",             "Group Stage",    1,          1,
+  "Qatar",             "Group Stage",    1,          0
+)
+
+stopifnot(nrow(tournament_results) == 32,
+          !any(duplicated(tournament_results$Squad)))
+
+# -----------------------------------------------------------------------------
+# 2. Compute team profile composition
+#    For each team: % of team minutes played by each profile
+# -----------------------------------------------------------------------------
+team_composition <- profile_assignments %>%
+  group_by(Squad = team_name, Profile_Label) %>%
+  summarise(
+    total_mins = sum(total_minutes, na.rm = TRUE),
+    n_players  = n(),
+    .groups = "drop"
+  ) %>%
+  group_by(Squad) %>%
+  mutate(
+    pct_mins    = total_mins / sum(total_mins),    # minutes-weighted
+    pct_players = n_players / sum(n_players)       # count-weighted
+  ) %>%
+  ungroup()
+
+# Sanity check: shares sum to 1 within each team
+share_check <- team_composition %>%
+  group_by(Squad) %>%
+  summarise(total_share = sum(pct_mins), .groups = "drop")
+stopifnot(all(abs(share_check$total_share - 1) < 1e-9))
+
+# Wide format: one row per team, columns = % of minutes in each profile
+composition_wide <- team_composition %>%
+  select(Squad, Profile_Label, pct_mins) %>%
+  pivot_wider(
+    names_from  = Profile_Label,
+    values_from = pct_mins,
+    values_fill = 0
+  ) %>%
+  janitor::clean_names() %>%
+  rename(Squad = squad)
+
+# Merge with tournament outcomes
+team_data <- composition_wide %>%
+  left_join(tournament_results, by = "Squad") %>%
+  filter(!is.na(Stage))
+
+message("Teams in analysis: ", nrow(team_data), " (expect 32)")
+print(team_data)
+
+# -----------------------------------------------------------------------------
+# 3. Save team composition data for outcome modeling (Script 06)
+# -----------------------------------------------------------------------------
+saveRDS(team_data, here("data", "processed", "team_composition_data.rds"))
+write_csv(team_data, here("data", "processed", "team_composition_data.csv"))
+
+message("\n✓ Team composition data saved — ready for 06_outcome_prediction.R")
