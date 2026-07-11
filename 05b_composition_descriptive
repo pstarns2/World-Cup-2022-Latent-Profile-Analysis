@@ -1,0 +1,234 @@
+# =============================================================================
+# 05b_composition_descriptives.R
+# World Cup LPA Project — Descriptive Composition Analyses
+#
+# Three descriptive exhibits (NOT predictive models — n = 32):
+#   1. Team profile "fingerprint" heatmap, grouped by tournament stage
+#   2. Profile × position crosstab (validity check: the model never saw
+#      positions — where does it agree/disagree with nominal position?)
+#   3. Scarcity analysis: which teams carried the rare profiles
+#      (Clinical Finishers, Ball-Playing Defenders)
+# =============================================================================
+
+library(tidyverse)
+library(here)
+
+profile_assignments <- readRDS(here("data", "processed", "profile_assignments.rds"))
+team_data           <- readRDS(here("data", "processed", "team_composition_data.rds"))
+
+dir.create(here("outputs", "figures"), recursive = TRUE, showWarnings = FALSE)
+dir.create(here("outputs", "tables"),  recursive = TRUE, showWarnings = FALSE)
+
+profile_colors <- c(
+  "Primary Attackers"      = "#E63946",
+  "Ball-Playing Defenders" = "#2196F3",
+  "Conservative Anchors"   = "#4CAF50",
+  "Balanced Contributors"  = "#9C27B0"
+)
+
+stage_levels <- c("Champion", "Final", "Semi-final", "Quarter-final",
+                  "Round of 16", "Group Stage")
+
+tournament_results <- team_data %>%
+  select(Squad, Stage, Stage_Num) %>%
+  mutate(Stage = factor(Stage, levels = stage_levels))
+
+# =============================================================================
+# 1. TEAM FINGERPRINT HEATMAP
+#    % of team minutes in each profile, teams grouped by stage reached
+# =============================================================================
+
+team_composition_long <- profile_assignments %>%
+  group_by(Squad = team_name, Profile_Label) %>%
+  summarise(total_mins = sum(total_minutes, na.rm = TRUE), .groups = "drop") %>%
+  group_by(Squad) %>%
+  mutate(pct_mins = total_mins / sum(total_mins)) %>%
+  ungroup() %>%
+  # make zero-share cells explicit so the heatmap grid is complete
+  # (tidyr:: prefix required: tidyLPA loads mice, whose complete() masks tidyr's)
+  tidyr::complete(Squad, Profile_Label,
+                  fill = list(total_mins = 0, pct_mins = 0)) %>%
+  inner_join(tournament_results, by = "Squad")
+
+team_order <- tournament_results %>%
+  arrange(Stage_Num, desc(Squad)) %>%   # low stage at bottom within facets
+  pull(Squad)
+
+p_heatmap <- team_composition_long %>%
+  mutate(Squad = factor(Squad, levels = team_order)) %>%
+  ggplot(aes(x = Profile_Label, y = Squad, fill = pct_mins)) +
+  geom_tile(color = "white", linewidth = 0.5) +
+  geom_text(aes(label = paste0(round(pct_mins * 100), "%"),
+                color = pct_mins > 0.35),
+            size = 2.8, fontface = "bold", show.legend = FALSE) +
+  scale_color_manual(values = c(`TRUE` = "white", `FALSE` = "gray25")) +
+  scale_fill_gradient(low = "#f7fbff", high = "#08519c",
+                      labels = scales::percent, name = "% Team\nMinutes") +
+  facet_grid(Stage ~ ., scales = "free_y", space = "free_y") +
+  labs(
+    title    = "Team Profile Composition by Tournament Stage",
+    subtitle = "% of team minutes played by each player profile — descriptive, n = 32 teams",
+    x        = "Player Profile",
+    y        = NULL,
+    caption  = "FIFA World Cup 2022 | Data: StatsBomb Open Data | Method: LPA via tidyLPA/mclust"
+  ) +
+  theme_minimal(base_size = 11) +
+  theme(
+    plot.title      = element_text(face = "bold"),
+    strip.text.y    = element_text(angle = 0, face = "bold"),
+    axis.text.x     = element_text(angle = 30, hjust = 1),
+    panel.grid      = element_blank(),
+    legend.position = "right"
+  )
+
+ggsave(here("outputs", "figures", "team_composition_heatmap.png"),
+       p_heatmap, width = 10, height = 14, dpi = 300, bg = "white")
+message("✓ Fingerprint heatmap saved")
+
+# =============================================================================
+# 2. PROFILE × POSITION CROSSTAB
+#    Position comes from the minutes data (modal position per player);
+#    the LPA never saw it. Agreement = validity; disagreement = insight.
+# =============================================================================
+
+player_minutes <- readRDS(here("data", "raw", "wc2022_player_minutes.rds"))
+
+# Collapse StatsBomb position strings to broad groups.
+# Order matters: "Wing Back" must resolve before "Wing"/"Back" alone.
+collapse_position <- function(pos) {
+  case_when(
+    str_detect(pos, "Wing Back")               ~ "Defender",
+    str_detect(pos, "Back")                    ~ "Defender",
+    str_detect(pos, "Midfield")                ~ "Midfielder",
+    str_detect(pos, "Wing|Forward|Striker")    ~ "Forward",
+    pos == "Substitute"                        ~ "Sub only",
+    TRUE                                       ~ "Other"
+  )
+}
+
+# Rename to pos_raw before joining — profile_assignments may already carry a
+# `position` column, and a name collision would produce position.x/position.y
+crosstab_data <- profile_assignments %>%
+  left_join(player_minutes %>%
+              select(player_name, team_name, pos_raw = position),
+            by = c("player_name", "team_name")) %>%
+  mutate(Position_Group = collapse_position(pos_raw))
+
+crosstab <- crosstab_data %>%
+  count(Profile_Label, Position_Group) %>%
+  group_by(Profile_Label) %>%
+  mutate(pct_of_profile = round(n / sum(n) * 100, 1)) %>%
+  ungroup()
+
+crosstab_wide <- crosstab %>%
+  select(Profile_Label, Position_Group, n) %>%
+  pivot_wider(names_from = Position_Group, values_from = n, values_fill = 0)
+
+message("\nProfile × Position crosstab (counts):")
+print(crosstab_wide)
+write_csv(crosstab_wide, here("outputs", "tables", "profile_position_crosstab.csv"))
+
+# The interesting rows: players whose profile disagrees with their position
+mismatches <- crosstab_data %>%
+  filter(
+    (Profile_Label == "Primary Attackers"      & Position_Group != "Forward") |
+    (Profile_Label == "Ball-Playing Defenders" & Position_Group != "Defender")
+  ) %>%
+  select(player_name, team_name, pos_raw, Profile_Label, Certainty) %>%
+  arrange(Profile_Label, desc(Certainty))
+
+message("\nProfile/position disagreements (potential insights):")
+print(mismatches, n = 30)
+write_csv(mismatches, here("outputs", "tables", "profile_position_mismatches.csv"))
+
+# Stacked bar visual
+p_crosstab <- crosstab %>%
+  filter(Position_Group != "Other") %>%
+  ggplot(aes(x = Profile_Label, y = n, fill = Position_Group)) +
+  geom_col(position = "fill", width = 0.65) +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(values = c("Defender" = "#264653", "Midfielder" = "#2a9d8f",
+                               "Forward" = "#e76f51", "Sub only" = "#adb5bd")) +
+  labs(
+    title    = "Who Is In Each Profile? Nominal Position by Latent Profile",
+    subtitle = "The LPA never saw positions — broad agreement is a validity check,\ndisagreement is where the model saw something positions hide",
+    x        = NULL, y = "% of profile members", fill = "Nominal Position",
+    caption  = "FIFA World Cup 2022 | Position = modal position from lineup/substitution events"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(face = "bold"),
+        axis.text.x = element_text(angle = 20, hjust = 1))
+
+ggsave(here("outputs", "figures", "profile_position_crosstab.png"),
+       p_crosstab, width = 10, height = 6, dpi = 300, bg = "white")
+message("✓ Crosstab figure saved")
+
+# =============================================================================
+# 3. SCARCITY ANALYSIS
+#    How much of each rare profile did each team carry, and does carrying
+#    any relate (descriptively) to how far teams went?
+# =============================================================================
+
+rare_profiles <- c("Primary Attackers", "Ball-Playing Defenders")
+
+scarcity <- team_composition_long %>%
+  filter(Profile_Label %in% rare_profiles) %>%
+  left_join(
+    profile_assignments %>%
+      count(Squad = team_name, Profile_Label, name = "n_players"),
+    by = c("Squad", "Profile_Label")
+  ) %>%
+  mutate(n_players = replace_na(n_players, 0)) %>%
+  select(Squad, Stage, Stage_Num, Profile_Label, n_players, pct_mins)
+
+# Table: teams × rare profiles, sorted by advancement
+scarcity_wide <- scarcity %>%
+  pivot_wider(names_from = Profile_Label,
+              values_from = c(n_players, pct_mins)) %>%
+  arrange(desc(Stage_Num), Squad)
+
+message("\nRare-profile holdings by team:")
+print(scarcity_wide, n = 32)
+write_csv(scarcity_wide, here("outputs", "tables", "rare_profile_scarcity.csv"))
+
+# Headline descriptives: mean share by stage + zero-counts
+scarcity_summary <- scarcity %>%
+  group_by(Stage, Profile_Label) %>%
+  summarise(
+    teams          = n_distinct(Squad),
+    mean_pct_mins  = mean(pct_mins),
+    teams_with_any = sum(n_players > 0),
+    .groups = "drop"
+  )
+
+message("\nRare-profile share by tournament stage:")
+print(scarcity_summary, n = 20)
+write_csv(scarcity_summary, here("outputs", "tables", "rare_profile_by_stage.csv"))
+
+# Dot plot: rare-profile minutes share vs stage
+p_scarcity <- scarcity %>%
+  ggplot(aes(x = pct_mins, y = fct_rev(Stage), color = Profile_Label)) +
+  geom_point(size = 3, alpha = 0.75,
+             position = position_jitter(height = 0.12, seed = 42)) +
+  scale_x_continuous(labels = scales::percent) +
+  scale_color_manual(values = profile_colors[rare_profiles]) +
+  labs(
+    title    = "Scarce Player Types and Tournament Advancement",
+    subtitle = "Each dot = one team's share of minutes in a rare profile — descriptive, not causal",
+    x        = "% of Team Minutes in Profile",
+    y        = NULL,
+    color    = "Rare Profile",
+    caption  = "FIFA World Cup 2022 | n = 32 teams"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(face = "bold"),
+        legend.position = "bottom")
+
+ggsave(here("outputs", "figures", "rare_profile_scarcity.png"),
+       p_scarcity, width = 10, height = 6, dpi = 300, bg = "white")
+message("✓ Scarcity figure saved")
+
+message("\n=== 05b complete ===")
+message("Figures: team_composition_heatmap.png, profile_position_crosstab.png, rare_profile_scarcity.png")
+message("Tables:  profile_position_crosstab.csv, profile_position_mismatches.csv,")
+message("         rare_profile_scarcity.csv, rare_profile_by_stage.csv")
