@@ -1,0 +1,132 @@
+# World Cup LPA Project - 2022 World Cup Data Source
+#
+# Source: StatsBomb Open Data (free, official release)
+#   - competition_id = 43 (FIFA World Cup)
+#   - season_id = 106 (2022 Qatar)
+#   - Includes StatsBomb 360 data (freeze frames / player locations)
+#
+# NOTE: Player minutes are computed EXCLUDING extra time. Given that, every spell on the
+#       pitch is capped at the 90th minute. Knockout ET is intentionally ignored.
+ 
+library(tidyverse)
+library(StatsBombR)
+library(here)
+ 
+dir.create(here("data", "raw"), recursive = TRUE, showWarnings = FALSE)
+ 
+# Get competition list and confirm WC 2022 IDs
+comps <- FreeCompetitions()
+ 
+wc2022 <- comps %>%
+  filter(competition_name == "FIFA World Cup", season_name == "2022")
+ 
+message("WC 2022 — competition_id: ", wc2022$competition_id,
+        " | season_id: ", wc2022$season_id)
+ 
+# Pull all match metadata for WC 2022
+matches <- FreeMatches(wc2022)
+ 
+message("Total matches: ", nrow(matches))  # Expected: 64 matches
+saveRDS(matches, here("data", "raw", "wc2022_matches.rds"))
+ 
+# Pull all events for all 64 matches
+events_raw <- free_allevents(MatchesDF = matches, Parallel = FALSE)
+ 
+events <- allclean(events_raw)
+ 
+message("Total events: ", nrow(events))
+message("Event types: ", paste(unique(events$type.name), collapse = ", "))
+ 
+saveRDS(events, here("data", "raw", "wc2022_events.rds"))
+message("✓ Events saved (", round(object.size(events) / 1e6, 1), " MB)")
+ 
+# Pull 360 data
+message("Pulling 360 data...")
+events_360 <- free_allevents_360(MatchesDF = matches)
+saveRDS(events_360, here("data", "raw", "wc2022_events_360.rds"))
+ 
+# Lineups (full squad list per match — kept for reference / downstream joins)
+lineups_raw <- StatsBombFreeLineups(matches)
+saveRDS(lineups_raw, here("data", "raw", "wc2022_lineups.rds"))
+ 
+ 
+# Player-match minutes (for per-90 normalization)
+# Built from the events feed:
+#   - Starting XI  -> starters + their starting position (minute_on = 0)
+#   - Substitution -> player OFF (player.name) and player ON (replacement)
+# Minutes are capped at 90 (extra time excluded). This is to ensure consistency in opportunity.
+ 
+MINUTES_CAP <- 90L
+ 
+# Starters are pulled from the Starting XI events.
+#    tactics.lineup is nested one row per player.
+starters <- events %>%
+  filter(type.name == "Starting XI") %>%
+  select(match_id, team.name, tactics.lineup) %>%
+  unnest(tactics.lineup) %>%
+  transmute(
+    match_id,
+    team_name   = team.name,
+    player_name = player.name,
+    position    = position.name,
+    minute_on   = 0L
+  )
+ 
+# Substitutions are who came OFF, at what minute.
+#    player.name = player leaving the pitch; minute = when it happened.
+subs_off <- events %>%
+  filter(type.name == "Substitution") %>%
+  transmute(
+    match_id,
+    player_name = player.name,   # player subbed OFF
+    minute_off  = minute
+  )
+ 
+#  Substitutions are who came ON, at what minute.
+#    substitution.replacement.name = player entering the pitch.
+subs_on <- events %>%
+  filter(type.name == "Substitution") %>%
+  transmute(
+    match_id,
+    team_name   = team.name,
+    player_name = substitution.replacement.name,  # player subbed ON
+    position    = "Substitute",
+    minute_on   = minute
+  )
+ 
+#  All appearances contains starters and players who came on.
+#    Attach each player's OFF minute (if any). A starter or an earlier sub who
+#    is later taken off is matched here; anyone still on at the whistle -> 90.
+appearances <- bind_rows(starters, subs_on) %>%
+  left_join(subs_off, by = c("match_id", "player_name")) %>%
+  mutate(
+    minute_off     = replace_na(minute_off, MINUTES_CAP),
+    # Cap both ends at 90 (exclude extra time), floor spells at 0.
+    minute_on      = pmin(minute_on,  MINUTES_CAP),
+    minute_off     = pmin(minute_off, MINUTES_CAP),
+    minutes_played = pmax(minute_off - minute_on, 0L)
+  )
+ 
+#  Aggregate to player-tournament totals.
+all_player_minutes <- appearances %>%
+  filter(minutes_played > 0) %>%          # drop no-shows / 0-minute rows
+  group_by(player_name, team_name) %>%
+  summarise(
+    total_minutes  = sum(minutes_played, na.rm = TRUE),
+    matches_played = n_distinct(match_id),
+    # Primary position = the position they logged the most minutes in.
+    position       = position[which.max(minutes_played)],
+    .groups = "drop"
+  ) %>%
+  mutate(per90s = total_minutes / 90)
+ 
+saveRDS(all_player_minutes, here("data", "raw", "wc2022_player_minutes.rds"))
+ 
+message("\n--- Acquisition Summary ---")
+message("Matches: ", nrow(matches))
+message("Total events: ", nrow(events))
+message("Players tracked: ", n_distinct(all_player_minutes$player_name))
+message("\n✓ All raw data saved to data/raw/")
+ 
+ 
+
