@@ -129,5 +129,8 @@ Requirements: `tidyverse`, `tidyLPA`, `mclust`, `StatsBombR`, `here`. All models
 - Spurk, D., Hirschi, A., Wang, M., Valero, D., & Kauffeld, S. (2020). Latent profile analysis: A review and "how to" guide of its application within vocational behavior research. *Journal of Vocational Behavior*.
 - Humphrey, S. E., Hollenbeck, J. R., Meyer, C. J., & Ilgen, D. R. (2007). Trait configurations in self-managed teams. *Journal of Applied Psychology*.
 - Rosenberg, J. M., et al. (2018). tidyLPA: An R package to easily carry out latent profile analysis. *Journal of Open Source Software*.
+
+## Disclosures
+This project was completed with the assistance of Claude.
 - StatsBomb Open Data: https://github.com/statsbomb/open-data
  
