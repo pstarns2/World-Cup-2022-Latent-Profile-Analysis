@@ -1,0 +1,195 @@
+# =============================================================================
+# World Cup LPA Project — Processing data
+#
+# Purpose: Aggregate raw StatsBomb events into per-90 player level
+#          data metrics for LPA. These metrics will
+#          act as performance dimensions.
+# Notice: Goalkeepers are excluded from this analysis as their position
+#         engages with entirely different performance dimensions.
+# =============================================================================
+
+library(tidyverse)
+library(psych)
+library(here)
+
+# -----------------------------------------------------------------------------
+# Load raw data
+# -----------------------------------------------------------------------------
+events          <- readRDS(here("data", "raw", "wc2022_events.rds"))
+player_minutes  <- readRDS(here("data", "raw", "wc2022_player_minutes.rds"))
+
+# Exclude goalkeepers
+gk_names <- events %>%
+  filter(position.name == "Goalkeeper") %>%
+  pull(player.name) %>%
+  unique()
+
+message("Goalkeepers excluded: ", length(gk_names))
+
+# -----------------------------------------------------------------------------
+# FINISHING: Non-penalty expected goals (npxG)
+# -----------------------------------------------------------------------------
+shots <- events %>%
+  filter(
+    type.name == "Shot",
+    !player.name %in% gk_names,
+    shot.type.name != "Penalty"
+  ) %>%
+  group_by(player.name, team.name) %>%
+  summarise(npxG_total = sum(shot.statsbomb_xg, na.rm = TRUE), .groups = "drop")
+
+# -----------------------------------------------------------------------------
+# CHANCE CREATION: Expected assisted goals (xAG)
+# -----------------------------------------------------------------------------
+assisted_shots <- events %>%
+  filter(type.name == "Shot", !is.na(shot.key_pass_id)) %>%
+  select(match_id, shot_xg = shot.statsbomb_xg, pass_id = shot.key_pass_id)
+
+xag_by_player <- events %>%
+  filter(type.name == "Pass", !player.name %in% gk_names) %>%
+  select(match_id, pass_id = id, player.name, team.name) %>%
+  left_join(assisted_shots, by = c("match_id", "pass_id")) %>%
+  group_by(player.name, team.name) %>%
+  summarise(xAG_total = sum(shot_xg, na.rm = TRUE), .groups = "drop")
+
+# -----------------------------------------------------------------------------
+# BALL PROGRESSION: Progressive carries
+# -----------------------------------------------------------------------------
+progressive_carries <- events %>%
+  filter(type.name == "Carry", !player.name %in% gk_names) %>%
+  mutate(carry_x_gain = carry.end_location.x - location.x) %>%
+  filter(carry_x_gain >= 9.144, location.x < 80) %>%
+  group_by(player.name, team.name) %>%
+  summarise(prog_carries_total = n(), .groups = "drop")
+
+# -----------------------------------------------------------------------------
+# DEFENSIVE EFFORT: Pressures
+# -----------------------------------------------------------------------------
+pressures <- events %>%
+  filter(type.name == "Pressure", !player.name %in% gk_names) %>%
+  group_by(player.name, team.name) %>%
+  summarise(pressures_total = n(), .groups = "drop")
+
+# -----------------------------------------------------------------------------
+# RELIABILITY: Pass completion %
+# -----------------------------------------------------------------------------
+passes_all <- events %>%
+  filter(
+    type.name == "Pass",
+    !player.name %in% gk_names,
+    is.na(pass.type.name) | !pass.type.name %in% c("Goal Kick", "Kick Off", "Corner")
+  ) %>%
+  group_by(player.name, team.name) %>%
+  summarise(
+    passes_attempted = n(),
+    passes_completed = sum(is.na(pass.outcome.name), na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(pass_completion_pct = passes_completed / passes_attempted * 100) %>%
+  filter(passes_attempted >= 10)
+
+# -----------------------------------------------------------------------------
+# PHYSICAL ROLE: Aerial duel involvement
+#
+# DATA NOTE: StatsBomb records standalone aerial duels only as "Aerial Lost"
+# events; aerial WINS are stored as boolean flags on other event types
+# (pass.aerial_won, shot.aerial_won, clearance.aerial_won, miscontrol.aerial_won).
+# The metric below therefore counts aerials LOST and should be interpreted as
+# aerial involvement, not aerials won. To upgrade to true contested aerials
+# (wins + losses), add the flagged wins — note this changes the LPA inputs and
+# requires re-running scripts 03-04:
+#
+# aerial_wins <- events %>%
+#   filter(!player.name %in% gk_names) %>%
+#   filter(pass.aerial_won | shot.aerial_won |
+#          clearance.aerial_won | miscontrol.aerial_won) %>%
+#   count(player.name, team.name, name = "aerials_won")
+# -----------------------------------------------------------------------------
+aerials <- events %>%
+  filter(
+    type.name == "Duel",
+    duel.type.name == "Aerial Lost",
+    !player.name %in% gk_names
+  ) %>%
+  group_by(player.name, team.name) %>%
+  summarise(
+    aerials_contested = n(),
+    .groups = "drop"
+  )
+
+# -----------------------------------------------------------------------------
+# Join all indicators + playing time, then compute per-90s
+# -----------------------------------------------------------------------------
+lpa_data <- player_minutes %>%
+  filter(!player_name %in% gk_names, total_minutes >= 180) %>%
+  left_join(shots,               by = c("player_name" = "player.name", "team_name" = "team.name")) %>%
+  left_join(xag_by_player,       by = c("player_name" = "player.name", "team_name" = "team.name")) %>%
+  left_join(progressive_carries, by = c("player_name" = "player.name", "team_name" = "team.name")) %>%
+  left_join(pressures,           by = c("player_name" = "player.name", "team_name" = "team.name")) %>%
+  left_join(passes_all,          by = c("player_name" = "player.name", "team_name" = "team.name")) %>%
+  left_join(aerials,             by = c("player_name" = "player.name", "team_name" = "team.name")) %>%
+  replace_na(list(npxG_total = 0, xAG_total = 0, prog_carries_total = 0,
+                  pressures_total = 0, aerials_contested = 0)) %>%
+  filter(!is.na(pass_completion_pct), passes_attempted >= 10) %>%
+  mutate(
+    npxG_per90               = npxG_total         / per90s,
+    xAG_per90                = xAG_total          / per90s,
+    prog_carries_per90       = prog_carries_total / per90s,
+    pressures_per90          = pressures_total    / per90s,
+    aerials_contested_per90  = aerials_contested  / per90s
+  )
+
+message("Final sample: n = ", nrow(lpa_data), " outfield players")
+
+# -----------------------------------------------------------------------------
+# Descriptive stats + collinearity check
+# -----------------------------------------------------------------------------
+lpa_indicators <- c("npxG_per90", "xAG_per90", "prog_carries_per90",
+                    "pressures_per90", "pass_completion_pct", "aerials_contested_per90")
+
+desc_stats <- lpa_data %>%
+  select(all_of(lpa_indicators)) %>%
+  psych::describe() %>%
+  as_tibble(rownames = "variable") %>%
+  select(variable, n, mean, sd, min, max, skew, kurtosis)
+
+print(desc_stats)
+
+cor_matrix <- lpa_data %>%
+  select(all_of(lpa_indicators)) %>%
+  cor(use = "pairwise.complete.obs")
+
+print(round(cor_matrix, 2))
+
+high_cors <- which(abs(cor_matrix) > 0.70 & cor_matrix != 1, arr.ind = TRUE)
+if (nrow(high_cors) > 0) {
+  message("⚠ High correlations (> .70) — consider removing redundant indicators:")
+  print(high_cors)
+} else {
+  message("✓ No problematic multicollinearity")
+}
+
+# -----------------------------------------------------------------------------
+# Z-score standardization + save scaling params for future application
+# -----------------------------------------------------------------------------
+lpa_data_scaled <- lpa_data %>%
+  mutate(across(all_of(lpa_indicators), ~ as.numeric(scale(.)), .names = "z_{.col}"))
+
+scaling_params <- lpa_data %>%
+  select(all_of(lpa_indicators)) %>%
+  summarise(across(everything(),
+                   list(mean = ~mean(.x, na.rm = TRUE),
+                        sd   = ~sd(.x,   na.rm = TRUE))))
+
+# -----------------------------------------------------------------------------
+# Save outputs
+# -----------------------------------------------------------------------------
+dir.create(here("data", "processed"), recursive = TRUE, showWarnings = FALSE)
+
+saveRDS(lpa_data,        here("data", "processed", "lpa_data.rds"))
+saveRDS(lpa_data_scaled, here("data", "processed", "lpa_data_scaled.rds"))
+saveRDS(scaling_params,  here("data", "processed", "scaling_params_2022.rds"))
+write_csv(lpa_data,      here("data", "processed", "lpa_data.csv"))
+write_csv(desc_stats,    here("data", "processed", "descriptive_stats.csv"))
+
+message("\n✓ Preprocessing complete — n = ", nrow(lpa_data), " players ready for LPA")
