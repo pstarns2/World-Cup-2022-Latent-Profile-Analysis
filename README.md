@@ -1,16 +1,16 @@
 # World-Cup-2022-Latent-Profile-Analysis
-Model-based clustering (tidyLPA/mclust) of 576 World Cup players on 6 game based metrics. Why use a Latent Profile Analysis? I chose it because cluster count and covariance structure are selected by fit indices (BIC, bootstrapped LRT, entropy) instead of guessed. This means that assignments come with posterior probabilities. The model recovered 5 interpretable roles without ever seeing positions.
+Model-based clustering (tidyLPA/mclust) of 576 World Cup players on 6 game based metrics. Why use a Latent Profile Analysis? I chose it because cluster count and covariance structure are selected by fit indices (BIC, bootstrapped LRT, entropy) instead of guessed. This means that assignments come with posterior probabilities.
 
 
-## TL;DR
+## TLDR
  
-- Latent Profile Analysis of **576 outfield players** (≥180 minutes) at the 2022 World Cup, built from **StatsBomb event-level data** across all 64 matches, identified **five distinct player profiles**: Clinical Finishers, Pressing Engines, Ball-Playing Defenders, Limited Role Players, and Balanced Contributors.
-- The model was never told a player's position, yet it rediscovered recognizable footballing roles: the finisher profile (9% of players) contains Messi, Mbappé, Giroud, and Julián Álvarez; the rarest profile (3.1%) is elite ball-playing defenders; Stones, Varane, Maguire, Aké.
-- One hypothesized type failed to appear: no distinct "Creative Playmaker" profile emerged. Chance creation turned out to be a feature of several player types rather than a type of its own.
+- Latent Profile Analysis of **295 outfield players** (≥180 minutes) at the 2022 World Cup, built from **StatsBomb event-level data** across all 64 matches, identified **four distinct player profiles**: Primary Attackers, Ball-Playing Defenders, Conservative Anchors, and Balanced Contributors.
+- The model never saw a player's position, yet it recovered recognizable roles, filing Messi, Neymar, and Bruno Fernandes *with* Giroud and Lewandowski. This indicates that at the elite level, chance creation and finishing turned out to be one job, not two. The hypothesized "Creative Playmaker" type does not exist as a separate profile.
+- The two 2022 finalists, Argentia and France, had nearly identical profile distributions (28% attacker minutes, majority Balanced Contributors), while no composition pattern cleanly separated advancing teams from eliminated ones: profile mix describes *how teams play*, not how far they go.
 ---
  
 ## Motivation
-With a passion for soccer and people analytics, I saw an opportunity to apply people analytic methods in a sporting context. Given that soccer is a complex game that is often reduced to averages, I wanted to apply a more rigorous methodology to help make sense of the underlying data. 
+With a passion for soccer and people analytics, I saw an opportunity to apply people analytic methods in a sporting context. Given that soccer is a complex game that is often reduced to averages, I wanted to apply a more rigorous methodology to help make sense of the underlying data how teams play. 
 
 In people analytics, variable-centered methods (regression, factor analysis) describe the *average* person: "does shooting accuracy predict goals?" However, person-centered methods like LPA ask: "**what kinds of people exist in this population?**" This mirrors a long line of IO psychology research on engagement profiles, burnout typologies, and team composition (Humphrey et al., 2007; Spurk et al., 2020). Looking at the data through this lens is also more useful question whenever teams rely on complementary types rather than interchangeable averages.
  
@@ -20,13 +20,14 @@ A World Cup is an unusually clean opportunity to deploy the method because it ha
  
 1. How many distinct performance profiles exist among 2022 World Cup outfield players, and what characterizes them?
 2. Do the profiles recovered by the model correspond to substantively meaningful footballing roles, and do they match what was hypothesized in advance?
+3. How do teams differ in their profile composition?
 ---
  
 ## Data & Indicators
  
 **Source:** StatsBomb Open DatA: This source contains every pass, shot, carry, pressure, and duel from all 64 matches. Player minutes were reconstructed from Starting XI and substitution events, capped at 90 per match (extra time excluded for opportunity consistency).
  
-**Inclusion:** The analysis include players that logger ≥180 minutes played and ≥10 passes attempted. The analysis excluded goalkeepers. n = 576.
+**Inclusion:** The analysis include players that logger ≥180 minutes played and ≥10 passes attempted. The analysis excluded goalkeepers. Final n = 295.
  
 Six per-90 indicators spanning attack, creation, progression, defense, and technical reliability, each z-scored on the sample:
  
@@ -42,83 +43,104 @@ Six per-90 indicators spanning attack, creation, progression, defense, and techn
 > **Data note:** StatsBomb logs standalone aerial duels only as "Aerial Lost" events (wins are attributes of other events), so the aerial indicator undercounts won aerials and is best read as *aerial involvement*.
  
 ---
+LPA solutions with 1–6 profiles were fit via `tidyLPA`/`mclust` under three variance-covariance specifications (M1: equal variances; M2: varying variances; M6: varying variances + covariances), following the model-selection framework standard in organizational research (Spurk et al., 2020; Nylund et al., 2007): BIC, entropy > .80, bootstrapped LRT, minimum profile size > 5%, and theoretical interpretability.
  
-## Method: Model Enumeration & Selection
+| Specification | k | BIC | Entropy | Smallest profile | Passes all criteria |
+|---|---|---|---|---|---|
+| M1 (equal var) | 5 | 4,828 | .77 | 4.7% | ✗ |
+| M2 (varying var) | 3 | 4,422 | .81 | 28.8% | ✓ |
+| **M2 (varying var)** | **4** | **4,356** | **.84** | **11.9%** | **✓** |
+| M2 (varying var) | 5 | 4,367 | .80 | 14.9% | ✓ |
+| M2 (varying var) | 6 | 4,286 | .81 | 8.1% | ✓ |
+| M6 (varying var+cov) | 4 | 4,533 | .86 | 21.0% | ✓ |
  
-LPA solutions with 1–6 profiles were fit via `tidyLPA`/`mclust` under three variance-covariance specifications (equal variances; varying variances; varying variances + covariances), following the model-selection framework standard in organizational research (Spurk et al., 2020; Nylund et al., 2007): BIC, entropy > .80, bootstrapped LRT, minimum profile size, and theoretical interpretability.
+**Selected: 4-profile, varying-variance solution (M2).** Within M2, BIC reaches a local minimum at k = 4 (4,356; k = 5 is *worse* at 4,367), entropy peaks at .84, the bootstrapped LRT is significant (p < .01), and every profile exceeds 10% of the sample. The 6-profile solution buys a lower BIC at the cost of weaker classification certainty, a near-threshold smallest profile, and two additional classes without clear substantive identity. The 3-profile solution collapses distinctions the 4-profile solution shows are real.
  
-| Specification | k | BIC | Entropy | Smallest profile |
-|---|---|---|---|---|
-| Equal variances (M1) | 5 | 9,128 | .81 | 3.1% |
-| Equal variances (M1) | 6 | 8,884 | .83 | 2.6% |
-| Varying variances (M2) | 2 | 8,220 | .89 | 45% |
-| Varying var + cov (M6) | 2 | 8,064 | .91 | 46% |
+![BIC by number of profiles](outputs/figures/bic_elbow_plot.png)
  
-**Selected: 5-profile, equal-variance solution.** The fit indices did not agree, which is the norm rather than the exception in applied LPA. The more flexible specifications achieved better BIC but failed to converge beyond k = 2, and a 2-profile solution ("attackers vs. everyone else") is theoretically uninformative. Within M1, BIC declined monotonically through k = 6 without a clean elbow; the 5-profile solution was preferred for entropy above .80, significant BLRT (p < .01), and interpretability. The selection of the 5-profile solution was selected despte the smallest profile holding only 3.1% of the sample, which is under the 5% guideline. However, I decided to retain that profile, because Ball-Playing Defenders has face validity.
+![Entropy by number of profiles](outputs/figures/entropy_plot.png)
 
-![BIC by number of profiles](bic_elbow_plot.png)
- 
-![Entropy by number of profiles](entropy_plot.png)
- 
- 
 ---
  
 ## Results: The Five Profiles
-![Latent player performance profiles — z-score means by profile](lpa_profile_plot.png)
-Profile means on the original scale:
+
+![Latent player performance profiles — z-score means by profile](outputs/figures/lpa_profile_plot.png)
+ 
+The profile plot is the core result: four lines that barely overlap, each with a distinct signature. Profile means on the original scale:
  
 | Profile | n | % | npxG/90 | xAG/90 | Prog. carries/90 | Pressures/90 | Aerials/90 | Pass % |
 |---|---|---|---|---|---|---|---|---|
-| **Clinical Finishers** | 52 | 9.0 | **0.28** | 0.08 | 1.84 | 9.70 | **2.24** | 72.4 |
-| **Pressing Engines** | 169 | 29.3 | 0.05 | 0.07 | 3.32 | **11.83** | 1.32 | 80.8 |
-| **Ball-Playing Defenders** | 18 | 3.1 | 0.05 | 0.03 | **9.64** | 5.60 | 1.34 | **89.7** |
-| **Limited Role Players** | 69 | 12.0 | 0.05 | 0.02 | 0.66 | 5.20 | 0.89 | 61.5 |
-| **Balanced Contributors** | 268 | 46.5 | 0.02 | 0.02 | 1.13 | 4.29 | 0.47 | 83.7 |
+| **Primary Attackers** | 61 | 20.7 | **0.23** | **0.13** | 2.33 | **14.8** | **3.09** | 70.7 |
+| **Ball-Playing Defenders** | 35 | 11.9 | 0.08 | 0.01 | **6.29** | 6.20 | 1.34 | **88.3** |
+| **Conservative Anchors** | 68 | 23.1 | 0.01 | 0.01 | 3.28 | 11.4 | 1.29 | 82.8 |
+| **Balanced Contributors** | 131 | 44.4 | 0.08 | 0.09 | 3.81 | 13.2 | 1.26 | 81.0 |
  
-**Clinical Finishers (9%).** npxG roughly 5× the sample mean, the strongest aerial presence, and offensive output purchased at the price of possession security. Members: Messi, Mbappé, Giroud, Julián Álvarez, Lautaro Martínez, En-Nesyri.
+**Primary Attackers (21%).** High on *both* finishing (npxG z ≈ +1.1) and creation (xAG z ≈ +0.7), the most aerially involved, and the least secure in possession (pass z ≈ −1.0) — output purchased at the price of possession security. Highest-certainty members: Giroud, Lewandowski, Embolo; Messi, Mbappé, and Neymar classify here too. Note that npxG measures the quality of chances *accumulated*, not conversion — this profile identifies players who consistently occupy high-value attacking situations.
  
-**Pressing Engines (29%).** The tournament's engine room: nearly 12 pressures per 90 with meaningful ball progression and almost no direct goal threat. Members: Modrić, Kovačić, De Paul, Amrabat, Enzo Fernández, Tchouaméni.
+**Ball-Playing Defenders (12%).** The most distinctive signature in the data: progressive carrying near +1 SD, the best passing (88.3%), and by far the *least* pressing (z ≈ −1.1) — players who advance the ball into space nobody contests. Members: Stones, Maguire, Laporte, Tim Ream, and Rodri (who played the tournament at center-back for Spain).
  
-**Ball-Playing Defenders (3.1%).** The rarest and most distinctive profile: extreme progressive carrying (9.6/90, nearly 3× the next profile) combined with near-90% passing and modest defensive event volume — possession-dominant teams' center-backs advancing into uncontested space. Members: Stones, Varane, Maguire, Marquinhos, Aké.
+**Conservative Anchors (23%).** Near-zero attacking output (npxG and xAG both ≈ 0.01/90) with slightly above-average passing security and unremarkable everything else. These are the low-risk stabilizers — full-backs and holding mids like Mooy, Krychowiak, and Hincapié whose job is to not lose the game.
  
-**Limited Role Players (12%).** Low volume on every dimension with the weakest passing (61.5%); disproportionately substitutes and direct wide attackers whose game is high-risk touches in the final third (Kolo Muani, Ezzalzouli).
+**Balanced Contributors (44%).** The plurality profile: mildly above average in creation and pressing, mildly below in everything physical. Modrić, Marquinhos, Bernardo Silva, and Konaté all land here — genuinely excellent players whose contribution is spread too evenly for any single dimension to define them.
  
-**Balanced Contributors (46.5%).** Nearly half the sample: reliable circulation, modest event volume everywhere.
+![Profile membership distribution](outputs/figures/profile_size_distribution.png)
+
+### The profile that refused to exist
  
-![Profile membership distribution](profile_size_distribution.png)
+Five types were hypothesized in advance, including a distinct "Creative Playmaker" defined by chance creation. It never emerged — in no solution did xAG dominate a profile on its own. Instead, the model filed the tournament's elite creators (Messi, Neymar, Bruno Fernandes, Griezmann) into the same profile as its pure finishers. The person-centered conclusion: at this level, *creating and taking high-value chances is one role, not two*. A variable-centered analysis could never have surfaced this — the xAG regression coefficient would have looked healthy either way.
  
-*(Full fit table: `outputs/tables/model_fit_comparison.csv`; profile exemplars: `outputs/tables/notable_players_per_profile.csv`.)*
+### Validity check: profiles vs. positions
  
-### What the model does well
+![Nominal position by latent profile](outputs/figures/profile_position_crosstab.png)
  
-Five profiles were hypothesized in advance (finishers, playmakers, pressers, defensive anchors, balanced contributors). Four emerged in recognizable form. The fifth, **"Creative Playmakers", never separated**: xAG never dominated a profile on its own, instead distributing across finishers, pressers, and ball-playing defenders. In a variable-centered analysis (like averages) this would be invisible; the person-centered result says creation at the elite level is not a role but an attribute carried by several roles. The positionless model also produced an informative surprise: it grouped elite center-backs by what they *do with the ball* rather than where they stand, something no position-based grouping would reveal.
+The model never saw positions, so agreement between profile and position is an external validity check — and disagreement is information, not error. Ball-Playing Defenders are 94% nominal defenders; Primary Attackers are 72% forwards, with the "mismatches" being attacking midfielders (Neymar, Griezmann, Bruno Fernandes) whom the model grouped by function rather than formation slot. Across 295 players there are exactly two genuine anomalies — Steven Bergwijn and Granit Xhaka classifying as Ball-Playing Defenders — which is the kind of error rate that builds confidence in the other 293. (Full crosstab: `outputs/tables/profile_position_crosstab.csv`; anomalies: `profile_position_mismatches.csv`.)
+ 
+---
+ 
+## Team Composition: Style, Not Destiny
+ 
+Aggregating profiles to minutes-weighted team shares gives every squad a compositional "fingerprint." With n = 32 teams this is deliberately descriptive — no regression, no causal claims — but the descriptive patterns are striking:
+ 
+![Team profile composition by tournament stage](outputs/figures/team_composition_heatmap.png)
+ 
+- **The two finalists were compositional twins.** Argentina and France both gave 28% of minutes to Primary Attackers and a majority (59% and 54%) to Balanced Contributors — the only two teams in the tournament with that combination.
+- **Composition did not predict advancement.** Ghana gave 45% of minutes to attackers and went home in the group stage; Spain gave 0% and won its group before a Round-of-16 exit on penalties as the tournament's most Balanced-heavy side (76%). Attacker share among group-stage exits (22%) was virtually identical to the champion's (28%).
+- **Anchor-heavy compositions cluster among underdogs.** Costa Rica (62%), Qatar (55%), and Cameroon (49%) devoted the most minutes to Conservative Anchors — consistent with low-block, risk-minimizing game plans — but Australia reached the knockouts with 53%, so even that pattern has exceptions.
+- **Ball-Playing Defenders were a knockout-round staple but not a requirement:** 13 of 16 knockout teams fielded at least one, vs. 10 of 16 group-stage exits — and the champion's share was just 5%.
+The people-analytics translation: team profile mix is a *style descriptor*, not a performance predictor — the same lesson as workforce composition dashboards, which describe how an organization distributes its labor without by themselves explaining which org wins. (Data: `outputs/tables/rare_profile_scarcity.csv`, `rare_profile_by_stage.csv`; exploratory outcome models in scripts `06`.)
  
 ---
  
 ## Limitations
  
-- Profiles describe *World Cup group-and-knockout tournament behavior* per 90 minutes. This is a compressed, tactically distinctive context, and should not be read as stable player traits.
+- Profiles describe *World Cup tournament behavior* per 90 minutes — a compressed, tactically distinctive context — and should not be read as stable player traits.
 - The aerial indicator undercounts won duels (see data note).
-- The 3.1% profile, while interpretable, is below conventional size guidelines and rests on 18 players.
-- Indicators are per-90 rates. This means players near the 180-minute floor have noisier rates than tournament ever-presents.
-
+- Players near the 180-minute floor have noisier per-90 rates than tournament ever-presents.
+- npxG/xAG measure chance quality accumulated, not conversion skill; the attacker profile identifies chance-takers, not proven finishers.
+- Team-level patterns are descriptive; n = 32 supports no inferential claims.
+## What This Project Demonstrates
+ 
+End-to-end analytical ownership: raw event-data engineering (reconstructing player minutes from substitution events), catching and correcting a data bug whose fix overturned the original model selection, principled indicator construction with explicit construct mapping, formal mixture-model enumeration with transparent tradeoffs, programmatic label assignment that cannot drift from model output, and interpretation that lets the data overrule prior hypotheses. The method translates directly to people analytics: the same pipeline recovers employee typologies from performance, collaboration, and engagement data.
+ 
 ---
  
 ## Repository Structure
  
 ```
 wc-player-profiles/
-├── 01_soccer_data.R              # StatsBomb pull + player-minutes reconstruction
-├── 02_Metric Creation.R          # Event aggregation: 6 per-90 indicators, z-scoring
-├── 03_lpa_model_selection.R      # 1–6 profile enumeration, 3 specifications, fit indices
-├── 04_lpa_final_model.R          # Final 5-profile model, labeling, visualization
-├── 05_team_composition.R         # Shows profile distribution on teams
-├── data/                         # raw (StatsBomb) and processed (analysis-ready)
-├── outputs/                      # figures, tables, saved model objects
-└── codebook.md                   # variable definitions
+├── 01_soccer_data.R               # StatsBomb pull + player-minutes reconstruction
+├── 02_metric_creation.R           # Event aggregation → 6 per-90 indicators, z-scoring
+├── 03_lpa_model_selection.R       # 1–6 profile enumeration, 3 specifications, fit indices
+├── 04_lpa_final_model.R           # Final 4-profile model, data-driven labeling, figures
+├── 05_team_composition.R          # Minutes-weighted team profile mix
+├── 05b_composition_descriptives.R # Heatmap, position crosstab, scarcity analysis
+├── 06_outcome_prediction.R        # Exploratory outcome models (n = 32; descriptive)
+├── data/                          # raw (StatsBomb) and processed (analysis-ready)
+├── outputs/                       # figures, tables, saved model objects
+└── codebook.md                    # variable definitions
 ```
  
-Requirements: `tidyverse`, `tidyLPA`, `mclust`, `StatsBombR`, `here`. All models seeded (`set.seed(42)`).
+Requirements: `tidyverse`, `tidyLPA`, `mclust`, `StatsBombR`, `here` (see `packages.R`). All models seeded (`set.seed(42)`).
  
 ---
  
@@ -128,8 +150,5 @@ Requirements: `tidyverse`, `tidyLPA`, `mclust`, `StatsBombR`, `here`. All models
 - Spurk, D., Hirschi, A., Wang, M., Valero, D., & Kauffeld, S. (2020). Latent profile analysis: A review and "how to" guide of its application within vocational behavior research. *Journal of Vocational Behavior*.
 - Humphrey, S. E., Hollenbeck, J. R., Meyer, C. J., & Ilgen, D. R. (2007). Trait configurations in self-managed teams. *Journal of Applied Psychology*.
 - Rosenberg, J. M., et al. (2018). tidyLPA: An R package to easily carry out latent profile analysis. *Journal of Open Source Software*.
-
-## Disclosures
-This project was completed with the assistance of Claude.
 - StatsBomb Open Data: https://github.com/statsbomb/open-data
  
