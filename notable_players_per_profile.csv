@@ -1,0 +1,26 @@
+Profile_Label,player_name,team_name,total_minutes,Certainty
+Clinical Finishers,Olivier Giroud,France,419,1
+Clinical Finishers,Mitchell Thomas Duke,Australia,270,1
+Clinical Finishers,Gue-Sung Cho,South Korea,276,1
+Clinical Finishers,Robert Lewandowski,Poland,360,1
+Clinical Finishers,Breel-Donald Embolo,Switzerland,323,1
+Pressing Engines,Wataru Endo,Japan,274,0.947
+Pressing Engines,Selim Amallah,Morocco,407,0.942
+Pressing Engines,Idrissa Gana Gueye,Senegal,270,0.879
+Pressing Engines,Antoine Griezmann,France,538,0.716
+Pressing Engines,Hidemasa Morita,Japan,270,0.595
+Ball-Playing Defenders,Rodrigo Hernández Cascante,Spain,360,1
+Ball-Playing Defenders,Aymeric Laporte,Spain,270,1
+Ball-Playing Defenders,Tim Ream,United States,360,0.999
+Ball-Playing Defenders,Abdelkarim Hassan Al Haj Fadlalla,Qatar,270,0.998
+Ball-Playing Defenders,Marcos Aoás Corrêa,Brazil,396,0.997
+Limited Role Players,Christian Pulisic,United States,315,0.989
+Limited Role Players,Cody Mathès Gakpo,Netherlands,430,0.981
+Limited Role Players,Junya Ito,Japan,294,0.978
+Limited Role Players,Denzel Dumfries,Netherlands,450,0.969
+Limited Role Players,Ismaïla Sarr,Senegal,343,0.962
+Balanced Contributors,Rúben Santos Gato Alves Dias,Portugal,360,0.999
+Balanced Contributors,Declan Rice,England,417,0.999
+Balanced Contributors,Kamil Glik,Poland,360,0.999
+Balanced Contributors,Jawad El Yamiq,Morocco,280,0.999
+Balanced Contributors,Kamal Miller,Canada,270,0.998
