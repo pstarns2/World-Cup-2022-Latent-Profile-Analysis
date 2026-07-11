@@ -1,0 +1,21 @@
+Profile_Label,player_name,team_name,total_minutes,Certainty
+Primary Attackers,Breel-Donald Embolo,Switzerland,323,1
+Primary Attackers,Olivier Giroud,France,419,1
+Primary Attackers,Robert Lewandowski,Poland,360,1
+Primary Attackers,Mitchell Thomas Duke,Australia,270,1
+Primary Attackers,Gue-Sung Cho,South Korea,276,1
+Ball-Playing Defenders,Aymeric Laporte,Spain,270,1
+Ball-Playing Defenders,Rodrigo Hernández Cascante,Spain,360,1
+Ball-Playing Defenders,Tim Ream,United States,360,1
+Ball-Playing Defenders,John Stones,England,436,1
+Ball-Playing Defenders,Harry Maguire,England,430,1
+Conservative Anchors,Aaron Mooy,Australia,360,0.985
+Conservative Anchors,Seyed Majid Hosseini,Iran,270,0.985
+Conservative Anchors,Bartosz Bereszyński,Poland,342,0.985
+Conservative Anchors,Grzegorz Krychowiak,Poland,332,0.985
+Conservative Anchors,Piero Martín Hincapié Reyna,Ecuador,270,0.981
+Balanced Contributors,Marcos Aoás Corrêa,Brazil,396,1
+Balanced Contributors,Bernardo Mota Veiga de Carvalho e Silva,Portugal,356,1
+Balanced Contributors,Ibrahima Konaté,France,287,0.999
+Balanced Contributors,Luka Modrić,Croatia,615,0.999
+Balanced Contributors,Youssouf Sabaly,Senegal,360,0.999

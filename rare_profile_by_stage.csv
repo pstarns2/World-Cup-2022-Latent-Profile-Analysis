@@ -1,0 +1,13 @@
+Stage,Profile_Label,teams,mean_pct_mins,teams_with_any
+Champion,Primary Attackers,1,0.27500865351332643,1
+Champion,Ball-Playing Defenders,1,0.04880581516095535,1
+Final,Primary Attackers,1,0.28136531365313655,1
+Final,Ball-Playing Defenders,1,0.09132841328413284,1
+Semi-final,Primary Attackers,2,0.10720781187447781,2
+Semi-final,Ball-Playing Defenders,2,0.13374640804317173,2
+Quarter-final,Primary Attackers,4,0.197306641771073,4
+Quarter-final,Ball-Playing Defenders,4,0.1516378297143213,3
+Round of 16,Primary Attackers,8,0.14402482170013936,7
+Round of 16,Ball-Playing Defenders,8,0.13188333607161037,6
+Group Stage,Primary Attackers,16,0.21584105078150065,14
+Group Stage,Ball-Playing Defenders,16,0.10975232978040413,10
