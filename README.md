@@ -56,11 +56,16 @@ LPA solutions with 1–6 profiles were fit via `tidyLPA`/`mclust` under three va
 | Varying var + cov (M6) | 2 | 8,064 | .91 | 46% |
  
 **Selected: 5-profile, equal-variance solution.** The fit indices did not agree, which is the norm rather than the exception in applied LPA. The more flexible specifications achieved better BIC but failed to converge beyond k = 2, and a 2-profile solution ("attackers vs. everyone else") is theoretically uninformative. Within M1, BIC declined monotonically through k = 6 without a clean elbow; the 5-profile solution was preferred for entropy above .80, significant BLRT (p < .01), and interpretability. The selection of the 5-profile solution was selected despte the smallest profile holding only 3.1% of the sample, which is under the 5% guideline. However, I decided to retain that profile, because Ball-Playing Defenders has face validity.
+
+![BIC by number of profiles](outputs/figures/bic_elbow_plot.png)
+ 
+![Entropy by number of profiles](outputs/figures/entropy_plot.png)
+ 
  
 ---
  
 ## Results: The Five Profiles
- 
+![Latent player performance profiles — z-score means by profile](outputs/figures/lpa_profile_plot.png)
 Profile means on the original scale:
  
 | Profile | n | % | npxG/90 | xAG/90 | Prog. carries/90 | Pressures/90 | Aerials/90 | Pass % |
@@ -81,7 +86,9 @@ Profile means on the original scale:
  
 **Balanced Contributors (46.5%).** Nearly half the sample: reliable circulation, modest event volume everywhere.
  
-*(Figures: `outputs/figures/lpa_profile_plot.png`, `profile_size_distribution.png`; full fit table: `outputs/tables/model_fit_comparison.csv`.)*
+![Profile membership distribution](outputs/figures/profile_size_distribution.png)
+ 
+*(Full fit table: `outputs/tables/model_fit_comparison.csv`; profile exemplars: `outputs/tables/notable_players_per_profile.csv`.)*
  
 ### What the model does well
  
