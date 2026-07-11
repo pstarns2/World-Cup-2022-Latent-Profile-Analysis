@@ -1,18 +1,18 @@
 # World-Cup-2022-Latent-Profile-Analysis
-Model-based clustering (tidyLPA/mclust) of 576 World Cup players on 6 game based metrics. Why use a Latent Profile Analysis? I chose it because cluster count and covariance structure are selected by fit indices (BIC, bootstrapped LRT, entropy) instead of guessed. This means that assignments come with posterior probabilities.
+This project uses model-based clustering (tidyLPA/mclust) of 576 World Cup players on 6 game based metrics. Why use a Latent Profile Analysis? I chose it because cluster count and covariance structure are selected by fit indices (BIC, bootstrapped LRT, entropy) instead of guessed. This means that assignments come with posterior probabilities.
 
 
 ## TLDR
  
-- Latent Profile Analysis of **295 outfield players** (≥180 minutes) at the 2022 World Cup, built from **StatsBomb event-level data** across all 64 matches, identified **four distinct player profiles**: Primary Attackers, Ball-Playing Defenders, Conservative Anchors, and Balanced Contributors.
-- The model never saw a player's position, yet it recovered recognizable roles, filing Messi, Neymar, and Bruno Fernandes *with* Giroud and Lewandowski. This indicates that at the elite level, chance creation and finishing turned out to be one job, not two. The hypothesized "Creative Playmaker" type does not exist as a separate profile.
-- The two 2022 finalists, Argentia and France, had nearly identical profile distributions (28% attacker minutes, majority Balanced Contributors), while no composition pattern cleanly separated advancing teams from eliminated ones: profile mix describes *how teams play*, not how far they go.
+- The following is a latent Profile Analysis of **295 outfield players** (≥180 minutes) at the 2022 World Cup. Using data from **StatsBomb event-level data** across all 64 matches, the analysis identified **four distinct player profiles**: Primary Attackers, Ball-Playing Defenders, Conservative Anchors, and Balanced Contributors.
+- The model operated without using a player's position and still recovered recognizable roles, filing Messi, Neymar, and Bruno Fernandes *with* Giroud and Lewandowski. This indicates that at the elite level, chance creation and finishing turned out to be one job, not two. The hypothesized "Creative Playmaker" type does not exist as a separate profile from "Clinical Finisher".
+- The two 2022 finalists, Argentia and France, had nearly identical profile distributions. Both had attackers accounting for 28% of the teams minutes and a majority their minutes were played by Balanced Contributors. While there was no clear composition pattern that cleanly separated advancing teams from eliminated ones. Generally it appears that profile mix describes *how teams play*, not how far they go in the tournament.
 ---
  
 ## Motivation
 With a passion for soccer and people analytics, I saw an opportunity to apply people analytic methods in a sporting context. Given that soccer is a complex game that is often reduced to averages, I wanted to apply a more rigorous methodology to help make sense of the underlying data how teams play. 
 
-In people analytics, variable-centered methods (regression, factor analysis) describe the *average* person: "does shooting accuracy predict goals?" However, person-centered methods like LPA ask: "**what kinds of people exist in this population?**" This mirrors a long line of IO psychology research on engagement profiles, burnout typologies, and team composition (Humphrey et al., 2007; Spurk et al., 2020). Looking at the data through this lens is also more useful question whenever teams rely on complementary types rather than interchangeable averages.
+In people analytics, variable-centered methods (regression, factor analysis) describe the *average* person: "does shooting accuracy predict goals?" However, person-centered methods like LPA ask: "**what kinds of people exist in this population?**" This mirrors a long line of IO psychology research on engagement profiles, burnout typologies, and team composition (Humphrey et al., 2007; Spurk et al., 2020). Looking at the data through this lens is also more useful question whenever teams rely on complementary types rather than interchangeable averages, which is why I am applying it to soccer analytics.
  
 A World Cup is an unusually clean opportunity to deploy the method because it has a fixed elite talent pool, a shared performance context, and objective event-level measurement.
  
