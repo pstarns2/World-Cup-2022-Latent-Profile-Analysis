@@ -56,15 +56,15 @@ LPA solutions with 1–6 profiles were fit via `tidyLPA`/`mclust` under three va
  
 **Selected: 4-profile, varying-variance solution (M2).** Within M2, BIC reaches a local minimum at k = 4 (4,356; k = 5 is *worse* at 4,367), entropy peaks at .84, the bootstrapped LRT is significant (p < .01), and every profile exceeds 10% of the sample. The 6-profile solution buys a lower BIC at the cost of weaker classification certainty, a near-threshold smallest profile, and two additional classes without clear substantive identity. The 3-profile solution collapses distinctions the 4-profile solution shows are real.
  
-![BIC by number of profiles](bic_elbow_plot.png)
+![BIC by number of profiles](visuals/bic_elbow_plot.png)
  
-![Entropy by number of profiles](entropy_plot.png)
+![Entropy by number of profiles](visuals/entropy_plot.png)
 
 ---
  
 ## Results: The Four Profiles
 
-![Latent player performance profiles — z-score means by profile](lpa_profile_plot.png)
+![Latent player performance profiles — z-score means by profile](visuals/lpa_profile_plot.png)
  
 The profile plot is the core result: four lines that barely overlap, each with a distinct signature. Profile means on the original scale:
  
@@ -83,7 +83,7 @@ The profile plot is the core result: four lines that barely overlap, each with a
  
 **Balanced Contributors (44%).** The plurality profile: mildly above average in creation and pressing, mildly below in everything physical. Modrić, Marquinhos, Bernardo Silva, and Konaté all land here, genuinely excellent players whose contribution is spread too evenly for any single dimension to define them.
  
-![Profile membership distribution](profile_size_distribution.png)
+![Profile membership distribution](visuals/profile_size_distribution.png)
 
 ### The profile that refused to exist
  
@@ -91,7 +91,7 @@ Five types were hypothesized in advance, including a distinct "Creative Playmake
  
 ### Validity check: profiles vs. positions
  
-![Nominal position by latent profile](profile_position_crosstab.png)
+![Nominal position by latent profile](visuals/profile_position_crosstab.png)
  
 The model never saw positions, so agreement between profile and position is an external validity check. Any disagreement is useful information about the unique qualities of specific players. Ball-Playing Defenders are 94% nominal defenders; Primary Attackers are 72% forwards, with the "mismatches" being attacking midfielders (Neymar, Griezmann, Bruno Fernandes) whom the model grouped by function rather than formation slot. Across 295 players there are exactly two genuine anomalies. Steven Bergwijn and Granit Xhaka classifying as Ball-Playing Defenders. (Full crosstab: `profile_position_crosstab.csv`; anomalies: `profile_position_mismatches.csv`.)
  
@@ -101,7 +101,7 @@ The model never saw positions, so agreement between profile and position is an e
  
 Aggregating profiles to minutes-weighted team shares gives every squad a compositional "fingerprint." With n = 32 teams this is deliberately descriptive, but the descriptive patterns are intriguing:
  
-![Team profile composition by tournament stage](team_composition_heatmap.png)
+![Team profile composition by tournament stage](visuals/team_composition_heatmap.png)
  
 - **The two finalists were compositional twins.** Argentina and France both gave 28% of minutes to Primary Attackers and a majority (59% and 54%) to Balanced Contributors. They are the only two teams in the tournament with this combination.
 - **Composition did not predict advancement.** Ghana gave 45% of minutes to attackers and went home in the group stage; Spain gave 0% and won its group before a Round-of-16 exit on penalties as the tournament's most Balanced-heavy side (76%). Attacker share among group-stage exits (22%) was virtually identical to the champion's (28%).
