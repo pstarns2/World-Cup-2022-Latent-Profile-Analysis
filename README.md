@@ -6,7 +6,7 @@ This project uses model-based clustering (tidyLPA/mclust) of 576 World Cup playe
  
 - The following is a latent Profile Analysis of **295 outfield players** (≥180 minutes) at the 2022 World Cup. Using data from **StatsBomb event-level data** across all 64 matches, the analysis identified **four distinct player profiles**: Primary Attackers, Ball-Playing Defenders, Conservative Anchors, and Balanced Contributors.
 - The model operated without using a player's position and still recovered recognizable roles, filing Messi, Neymar, and Bruno Fernandes *with* Giroud and Lewandowski. This indicates that at the elite level, chance creation and finishing turned out to be one job, not two. The hypothesized "Creative Playmaker" type does not exist as a separate profile from "Clinical Finisher".
-- The two 2022 finalists, Argentia and France, had nearly identical profile distributions. Both had attackers accounting for 28% of the teams minutes and a majority their minutes were played by Balanced Contributors. While there was no clear composition pattern that cleanly separated advancing teams from eliminated ones. Generally it appears that profile mix describes *how teams play*, not how far they go in the tournament.
+- The two 2022 finalists, Argentina and France, had nearly identical profile distributions. Both had attackers accounting for 28% of the teams minutes and a majority their minutes were played by Balanced Contributors. While there was no clear composition pattern that cleanly separated advancing teams from eliminated ones. Generally it appears that profile mix describes *how teams play*, not how far they go in the tournament.
 ---
  
 ## Motivation
@@ -25,9 +25,9 @@ A World Cup is an unusually clean opportunity to deploy the method because it ha
  
 ## Data & Indicators
  
-**Source:** StatsBomb Open DatA: This source contains every pass, shot, carry, pressure, and duel from all 64 matches. Player minutes were reconstructed from Starting XI and substitution events, capped at 90 per match (extra time excluded for opportunity consistency).
+**Source:** StatsBomb Open Data: This source contains every pass, shot, carry, pressure, and duel from all 64 matches. Player minutes were reconstructed from Starting XI and substitution events, capped at 90 per match (extra time excluded for opportunity consistency).
  
-**Inclusion:** The analysis include players that logger ≥180 minutes played and ≥10 passes attempted. The analysis excluded goalkeepers. Final n = 295.
+**Inclusion:** The analysis include players that logged ≥180 minutes played and ≥10 passes attempted. The analysis excluded goalkeepers. Final n = 295.
  
 Six per-90 indicators spanning attack, creation, progression, defense, and technical reliability, each z-scored on the sample:
  
@@ -62,7 +62,7 @@ LPA solutions with 1–6 profiles were fit via `tidyLPA`/`mclust` under three va
 
 ---
  
-## Results: The Five Profiles
+## Results: The Four Profiles
 
 ![Latent player performance profiles — z-score means by profile](lpa_profile_plot.png)
  
@@ -75,7 +75,7 @@ The profile plot is the core result: four lines that barely overlap, each with a
 | **Conservative Anchors** | 68 | 23.1 | 0.01 | 0.01 | 3.28 | 11.4 | 1.29 | 82.8 |
 | **Balanced Contributors** | 131 | 44.4 | 0.08 | 0.09 | 3.81 | 13.2 | 1.26 | 81.0 |
  
-**Primary Attackers (21%).** High on *both* finishing (npxG z ≈ +1.1) and creation (xAG z ≈ +0.7), the most aerially involved, and the least secure in possession (pass z ≈ −1.0), outputthat typically comes at the price of possession security. Highest-certainty members: Giroud, Lewandowski, Embolo; Messi, Mbappé, and Neymar classify here too. Note that npxG measures the quality of chances *accumulated*, not the conversion of these chances. This profile identifies players who consistently occupy high-value attacking situations and who have teammates that can get them into these high-value position.
+**Primary Attackers (21%).** High on *both* finishing (npxG z ≈ +1.1) and creation (xAG z ≈ +0.7), the most aerially involved, and the least secure in possession (pass z ≈ −1.0), output that typically comes at the price of possession security. Highest-certainty members: Giroud, Lewandowski, Embolo; Messi, Mbappé, and Neymar classify here too. Note that npxG measures the quality of chances *accumulated*, not the conversion of these chances. This profile identifies players who consistently occupy high-value attacking situations and who have teammates that can get them into these high-value position.
  
 **Ball-Playing Defenders (12%).** The most distinctive signature in the data: progressive carrying near +1 SD, the best passing (88.3%), and by far the *least* pressing (z ≈ −1.1), players who advance the ball into space nobody contests. Members: Stones, Maguire, Laporte, Tim Ream, and Rodri (who played the tournament at center-back for Spain).
  
