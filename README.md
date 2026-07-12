@@ -123,7 +123,7 @@ Aggregating profiles to minutes-weighted team shares gives every squad a composi
 ## Repository Structure
  
 ```
-wc-player-profiles/
+World-Cup-2022-Latent-Profile-Analysis/
 ├── 01_soccer_data.R               # StatsBomb pull + player-minutes reconstruction
 ├── 02_metric_creation.R           # Event aggregation → 6 per-90 indicators, z-scoring
 ├── 03_lpa_model_selection.R       # 1–6 profile enumeration, 3 specifications, fit indices
