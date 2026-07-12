@@ -1,5 +1,5 @@
 # World-Cup-2022-Latent-Profile-Analysis
-This project uses model-based clustering (tidyLPA/mclust) of 576 World Cup players on 6 game based metrics. Why use a Latent Profile Analysis? I chose it because cluster count and covariance structure are selected by fit indices (BIC, bootstrapped LRT, entropy) instead of guessed. This means that assignments come with posterior probabilities.
+This project uses model-based clustering (tidyLPA/mclust) of 295 World Cup players on 6 game based metrics. Why use a Latent Profile Analysis? I chose it because cluster count and covariance structure are selected by fit indices (BIC, bootstrapped LRT, entropy) instead of guessed. This means that assignments come with posterior probabilities.
 
 
 ## TLDR
